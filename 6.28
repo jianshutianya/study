@@ -1,0 +1,157 @@
+6.28
+1.Ceph创建块存储镜像的命令
+2.查看rbd镜像列表,查看具体镜像信息的命令
+3.Ceph认证账户的用户 和密码的配置文件路径
+
+
+6.29
+2.端口重定向 (显示器--->idrac)
+idrac网络参数
+账户和密码
+
+idrac setting
+network
+   LOM1/LOM2
+
+网站模板 开源/免费
+wordpress(国外)
+帝国/织梦 (国内)
+
+网站,后台管理界面
+admin , 123456
+php ---> 后台管理界面--图形界面 (新建网页,运营团队 )
+wordpress(公网)
+baidu(SEO,搜索引擎优化) 
+
+什么是端口重定向?
+远程管理服务器,服务器需要配置什么参数?
+
+
+7.1
+IaaS云 阿里云,华为云 云主机---虚拟机(文件)(裸机+操作系统)
+	基础架构(硬件(raid卡,远程控制ibos)+系统(pxe))
+
+PaaS云 (开箱即用) openshift云 google云
+	平台(LNMP,java+tomcat+mysql)
+
+SaaS云 百度云盘VIP,云视频,云财务
+	软件(java代码,php代码,python代码) 
+		---> 未来软件集成到WEB服务器 
+		QQ,weixin(浏览器)带宽----web(数据)性能(应用在服务器运行)
+
+nginx 
+haproxy  nginx静态
+	    nginx动态
+
+缓存服务器
+nginx,varnish,squid
+
+NoSQL (缓存数据库)  redis,mongodb
+not only
+SQL mysql,mariadb,...
+都支持SQL语法
+
+耦合  LNMP
+解耦
+组件解耦
+业务解耦 
+    微服务[docker容器]10w 不利于管理和维护
+
+数据库迁移
+灰度发布,蓝绿发布
+lnmp --- lnmp-mysql
+     迁移数据(锁) 03-06 时间段只能读,不能写 
+快照 10G
+同步1M  
+
+nfs 使用的是随机端口 235
+rpc[注册表]111
+nfs 235
+client 111-->235
+servera/abc serverb(mount)
+root_sequad
+
+7.2
+
+
+7.3
+nfs,ceph(更新)
+rm vim
+git(版本控制) svn
+修改,提交,修改,提交 1--20
+历史版本md5sum 
+CI/CD(支持)
+持续集成/持续部署
+开发----git(inotify)---test---服务器(虚拟机)---docker容器
+opentack,k8s/kubernetes 虚拟机集群,docker集群
+
+               computer[docker]
+人    manager   computer[docker]
+               computer[docker]
+
+git没有端口号 
+git服务协议才有端口号
+
+
+7.5
+为什么数据库不存放图片视频音频文本等文件?
+数据库存放什么数据?为什么?
+常见的数据库软件有哪些?
+mysql主要参数有哪些?对应的值?
+MySQL主配置文件  数据库目录  默认端口号 MySQL主进程名称  传输协议 进程所有者与所属组  错误日志文件
+为什么第一次进入mysql数据库不能无密码登录?该如何进入?
+如何临时修改验证密码策略参数?如何永久修改? 
+操作指令是否区分大小写?
+数据库哪些不区分大小写?
+说出常用SQL命令分类及相关指令?
+数据库命名规则?
+MySQL数据类型有哪些?
+char与varchar区别?
+int(11)与int(21)区别?
+数值类型如何标记为无符号存储?
+日期时间类型的datetime和timestamp的区别?范围 默认值
+year年份的有效范围是?
+枚举类型如何设置单选项和多选项?
+
+rpm -e --nodeps 
+--nodeps 不删除依赖包
+
+df -h 磁盘没有空间
+LANG=en growpart /dev/vda 1
+xfs_growfs /dev/vda1
+mysql工具 wordbench(官网免费) navicat(收费)  phpmyadmin(安装在服务器上,网页打开)
+
+事物 要么都成功,要么都失败 先存到内存 ---> 写磁盘
+转100
+-100                +100
+update(成功)    update(失败)
+黑账/坏账
+
+枚举
+char(20)  20个字母或20个中文
+select * from table; 生产环境不可直接使用
+char固定长度,不够自动填补空格,最大长度255字符
+varchar可变长度,根据实际数据大小分配存储空间
+int 10位 最大默认~=21亿
+
+旧计算机时间1970-1999
+datetime日期时间类型,范围1000-01-01 00:00:00:000000~9999-12-31 23:59:59.999999
+如果不给该类型的数据赋值,则默认为NULL
+timestamp日期时间类型,范围1970-01-01 00:00:00:000000~2038-01-19 03:14:07.999999
+如果不给该类型的数据赋值,则mysql自动为其分配当前的系统时间
+
+7.6
+庞老师
+panglj@tedu.cn
+
+
+RDBMS1 day01
+数据库相关概念
+搭建MySQL数据库服务器? 装包 修改配置文件 启动服务 登录
+数据库服务的基本使用?库 表 数据
+mysql数据类型? 字符类型 数值类型 日期时间 枚举类型 
+
+RDBMS1 day02
+1.字段约束条件
+2.修改表结构
+3.MySQL键值
