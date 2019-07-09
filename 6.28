@@ -155,3 +155,20 @@ RDBMS1 day02
 1.字段约束条件
 2.修改表结构
 3.MySQL键值
+
+
+count(*) count(id) count(1)的区别
++------ +------ +
+| id  |name|
++------ +------ +
+|  1  | a  |
+|NULL |NULL|
+|NULL |NULL|
++------ +------+
+count(*)=3 count(id)=1 count(1)=3
+
+完全备
+差异备
+增量备
+差异备
+增量备

@@ -13039,4 +13039,344 @@ time() 范围HH:MM:SS
 使用外键时,必须原表里有相同的字段:	insert into gzb values(1,50000);
 删除外键:				alter table gzb drop foreign key gzb_ibfk_1;
 
+庞老师
+静静
+   panglj@tedu.cn
+
+tmooc  PPT   案例1 
+
+
+
+++++++RDBMS1-DAY01
+1 数据库相关概念？ 
+2 搭建MySQL数据库服务器？ 装包 修改配置文件 启动服务 登陆
+3 数据库服务的基本使用？ 库 表 记录 select delete update insert
+4 mysql数据库类型
+
+
+++++++RDBMS1-DAY02
+连接数据库服务器 
+创建db2库
+
+在db2库 
+里创建 myself 表  有3个字段 分别是
+name 姓名
+age 年龄
+sex 性别
+
+把自己的信息记录到表里
+				时间10分钟 到 09：18 
+mysql> create database db2;
+mysql> use db2;
+mysql> create table myself(name char(20), age tinyint unsigned,sex  enum("boy","girl") );
+
+mysql> insert into  myself values("yaya",19,"girl");
+mysql> select * from  myself;
+
+
+一、表结构
+	1.1 字段约束条件  (控制字段赋值) Null | Key | Default | Extra
+
+
+	1.2 修改表结构
+		alter  table  表名  执行动作；
+		add(after/first) modify  change  drop  rename
+
+二、mysql键值
+	普通索引 index   *** 使用规则 使用（创建查看删除）
+	唯一索引 unique
+	主键 primary key ***使用规则 使用（创建查看删除）
+	外键 foreign key ***使用规则 使用（创建查看删除）
+	全文索引 fulltext	
+
+PRI   PRI
+姓名  班级  	缴费状态
+name class   	status
+bob   nsd1904   no
+员工信息表yginfo
+  员工编号     姓名
+    yg_id      name
+	1      bob
+	2      alice
+	3      tom
+create table  yginfo(
+yg_id int primary key auto_increment,
+name  char(20)
+)engine=innodb;
+
+insert into  yginfo(name)values("bob");
+insert into  yginfo(name)values("alice");
+insert into  yginfo(name)values("tom");
+
+select  * from yginfo;
+
+工资表 gzb
+      gz_id  pay
+     员工编号  工资 
+	
+create table gzb(
+gz_id int,
+pay  float(7,2),
+foreign key(gz_id) references yginfo(yg_id) on update cascade 
+on delete cascade
+)engine=innodb;
+
+show create table gzb\G;
+
++++++++++++RDBMS1_DAY03
+1、数据导入导出
+	检索目录
+		查看默认检索目录
+		mysql> show variables like  "secure_file_priv";
+		修改检索目录
+			]# mkdir  /myload  
+			]# chown  mysql  /myload
+			]# vim  /etc/my.cnf
+     			[mysqld]
+     			secure_file_priv="/myload“
+			:wq
+			]# systemctl  restart mysqld
+		mysql> show variables like  "secure_file_priv";
+
+	数据导入:把系统文件的内容存储到表里
+
+		 命令：mysql>  load  data  infile   "目录名/文件名" 
+into   table  库名.表名 fields terminated   by   "分隔符" lines  terminated  by   "\n";
+
+		例子：把/etc/passwd 文件的内容存储到db3库下的user表里。
+
+mysql> create database db3;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> use db3;
+
+			mysql> create table  user(
+    -> name char(50),
+    -> password char(1),
+    -> uid int,
+    -> gid int,
+    -> comment char(150),
+    -> homedir  char(100),
+    -> shell  char(100)
+    -> );
+
+mysql> system  cp /etc/passwd  /myload/
+
+mysql> load data infile "/myload/passwd" into table db3.user  fields terminated by  ":" lines terminated by  "\n";
+
+mysql> alter table db3.user add  id int primary key  auto_increment first;
+
+mysql> select  * from db3.user where  id=1;
+mysql> select  * from db3.user where  id<=5;
+		10:10 上课。
+
+	数据导出: 把表记录保存到系统文件里。
+	
+	命令1 mysql>  SQL查询命令 into  outfile  "目录/文件名" ；
+
+	命令2 mysql>  SQL查询命令 into  outfile  "目录/文件名" fields terminated by "分隔符"；
+
+	命令3 mysql>  SQL查询命令 into  outfile  "目录/文件名" fields terminated by "分隔符"   lines   terminated   by   “\n” ；
+
+
+mysql> select  * from db3.user where  id<=5 into outfile  "/myload/user.txt" ;
+
+mysql> select  * from db3.user where  id<=5 into outfile  "/myload/user.txt" 
+    -> fields terminated by "###"\c
+
+mysql> select  name,shell,uid  from db3.user where id<=3  into outfile  "/myload/user3.txt" fields terminated by "###" lines  terminated by "?";
+
+mysql>system  cat /myload/user.txt;
+mysql>system  cat /myload/user1.txt;
+mysql>system  cat /myload/user2.txt;
+					练习到10：30 
+2、管理表记录
+	插入表记录 insert into 库.表 values(值列表);
+
+mysql> 
+insert into db3.user 
+values(22,"bob","x",2000,2000,"test user","/home/bob","/bin/bash");
+
+insert into db3.user 
+values
+(25,"tom","x",2001,2001,"test user","/home/tom","/bin/bash"),
+(26,"lucy","x",2002,2002,"test user","/home/lucy","/bin/bash");
+
+mysql> insert into db3.user(name)values("alice");
+
+mysql> insert into db3.user(name)values("jerry"),("mack"),("rose");
+
+
+	查询表记录 select * from  库.表;
+
+		select   字段1, .. .., 字段N  from  库名.表名;
+
+		mysql> select name,shell from db3.user;
+		mysql> select * from db3.user;
+
+select  字段1, .. , 字段N  from  库名.表名  where   条件表达式;
+		
+		mysql> select name,shell from db3.user where id <= 2 ;
+		mysql> select * from db3.user where id <= 2 ;
+
+
+	更新表记录 update  库.表 set 字段名=值；
+		
+mysql> select password,comment from db3.user;
+mysql> update db3.user  set    password="a" , comment="student" ;
+mysql> select password,comment from db3.user;
+
+mysql> update db3.user set password="x" , comment="root" where name="root";
+mysql> select password,comment from db3.user;
+mysql> select  * from db3.user where name="root";
+
+	练习时间 5分钟 到 11：33 
+
+	删除表记录 delete from 库.表；
+			mysql> select  * from db3.user;
+			mysql> delete from db3.user where id >=25;
+			mysql> delete from db3.user where id =23;
+
+3、匹配条件
+	3.1 基本匹配条件 （select  、update 、delete）
+		数值比较: =  !=  >  >=  <  <=  
+
+mysql> select name from db3.user where uid=20;
+mysql> select name from db3.user where uid=0;
+mysql> select name,uid from db3.user where uid<=10;
+
+		字符比较: =  !=
+mysql> select name from db3.user where  shell = "/bin/bash";
+mysql> select name , shell from db3.user where  shell != "/bin/bash";
+
+
+mysql> select name,comment from db3.user where name = comment;
+mysql> select name,uid,gid from db3.user where uid = gid;
+		is    null  空
+		is not  null  非空
+mysql> insert into  db3.user(name) values(null),(NULL),(""),("null");
+mysql> select id, name  from db3.user  where name is not null;
+mysql> select id, name  from db3.user  where name is  null;
+		逻辑匹配(多个判断条件)
+		逻辑与 and  或 &&    多个条件必须同时成立
+		逻辑或 or  或  ||    多个条件某1个条件成立即可
+		逻辑非 ！ not        取反
+mysql> select name,uid from db3.user where name="root"  and  uid=3;
+mysql> select name,uid from db3.user where name="root"  or  uid=3;
+		范围内匹配
+mysql> select name from db3.user where  name in ("adm","sync","mysql","bin");
+mysql> select name,uid from db3.user where  uid in (12,70,23);
+mysql> select name,shell from db3.user where shell not in ("/bin/bash","/sbin/nologin");
+mysql> select  * from db3.user where uid between 10 and 20 ;
+	去重显示		
+mysql> select  distinct shell  from db3.user;
+						练习15分钟到 14：35
+
+	3.2 高级匹配条件
+		模糊查询 like
+		where 字段名 like  '表达式' ;
+			_ 表示1个字符
+
+			% 表示零个或多个字符
+
+mysql> select name from db3.user where  name  like  '___';
+mysql> select name from db3.user where  name  like  '____';
+mysql> select name from db3.user where  name  like  '%a%';
+mysql> select name from db3.user where  name  like  '__%__';
+
+		正则表达式 regexp
+		where 字段名  regexp   '正则表达式'
+		^  $  .  *  []  |
+
+mysql> select name from db3.user  where name  regexp '^a';
+mysql> select name from db3.user  where name  regexp 't$';
+mysql> select name from db3.user  where name  regexp '^a|t$';
+mysql> select name from db3.user  where name  regexp '^r.*t$';
+mysql> insert into  db3.user(name)values("yaya9"),("y8aya"),("ya6ya");
+mysql> select name from  db3.user where name regexp '[0-9]';
+
+		四则运算 + - * / %
+
+mysql> alter table db3.user 
+    -> add   system  int  default 80 ,
+    -> add   mysql   int  default 80 ;
+
+mysql> alter table db3.user 
+    -> add  age  tinyint default 19 after name;
+
+mysql> select  * from db3.user where name="root";
+
+mysql> select name,age, 2019 - age  csyf  from db3.user ;
+
+mysql> select name ,uid  from  db3.user where uid%2  =  0 ;
+mysql> select name ,uid  from  db3.user where uid%2  !=  0 ;
+
+mysql> select name,uid from db3.user where  uid  <=10;
+mysql> update db3.user set  uid=uid+1 where uid  <=10;
+		
+		() 提高优先级
+mysql> select name,system,mysql, system+mysql zfs , (system+mysql)/2 pzf  from db3.user where name="root";
+		
+
+	3.3  操作查询结果
+		 1 聚集函数 (mysql服务内置对数据做统计的命令)
+		avg() min() max() sum() count()
+
+			mysql> select max(uid) from db3.user;
+			mysql> select min(uid) from db3.user;
+			mysql> select avg(uid) from db3.user;
+			mysql> select sum(uid) from db3.user;
+			
+mysql> select name from  db3.user 
+	   where shell not in ("/bin/bash","/sbin/nologin");
+
+mysql> select count(name) from  db3.user 
+           where shell not in ("/bin/bash","/sbin/nologin");
+
+mysql> select  * from db3.user;
+mysql> select  count(*) from db3.user;
+
+		2 查询结果排序 order by  字段名  asc|desc
+
+mysql> select name , uid  from  db3.user where  uid >= 10  and  uid <= 1000 ;
+
+
+mysql> select name , uid  from  db3.user 
+                where  uid >= 10  and  uid <= 1000  order by  uid;
+
+mysql> select name , uid  from  db3.user
+                where  uid >= 10  and  uid <= 1000  order by  uid desc ;
+
+	     3  查询结果分组 group  by 字段名；
+mysql> select   shell  from  db3.user;
+mysql> select   shell  from  db3.user  group by shell;
+
+mysql> select   shell  from  db3.user where  uid <= 500;
+mysql> select   shell  from  db3.user where  uid <= 500 group by shell;
+
+	    4 查询结果过滤 having 条件
+
+mysql> select name  from  db3.user where  shell != "/bin/bash"
+
+mysql> select name  from  db3.user where  shell != "/bin/bash"
+	having  name="mysql";
+
+	   5 限制查询结果显示行数 limit
+
+mysql> select  id,name,shell,homedir  from  db3.user where uid <= 15;
+
+mysql> select  id,name,shell,homedir  from  db3.user 
+		where uid <= 15 limit 3;
+
+mysql> select  id,name,shell,homedir  from  db3.user 
+		where uid <= 15 limit 1;
+
+mysql> select  id,name,shell,homedir  from  db3.user
+		where uid <=15  limit 0,3;
+
+mysql> select  id,name,shell,homedir  from  db3.user 
+		where uid <=15  limit 3,3;
+
+4、MySQL管理工具
+	4.1 安装图形工具phpmyadmin
 
