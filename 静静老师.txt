@@ -1,0 +1,1130 @@
+﻿#!/bin/bash
+数据库
+储存数据的仓库
+常见的数据库软件:
+Oracle  开源  跨平台  甲骨文(厂商)
+MySQL   开源  跨平台  甲骨文(厂商)
+SQL Server  不开源  不跨平台  微软
+DB2    不开源  不跨平台  IBM
+Redis  开源  跨平台   开源软件
+Memcache  开源  跨平台   开源软件
+MongoDB   开源  跨平台   开源软件
+
+
+
+案例一:安装部署MySQL
+
+1.准备工作(非必须的操作):
+关闭防火墙(如果有的话)
+关闭SELinux(如果有的话)
+如果之前有mariadb,则需要先卸载,并删除对应的配置与数据:
+systemctlstop mariadb
+rm-rf /etc/my.cnf
+rm -rf /var/lib/mysql/*
+rpm -e --nodeps mariadb mariadb-server mariadb-devel
+
+2.安装部署MySQL
+[root@mysql50 ~]# tar -xf mysql-5.7.17.tar
+[root@mysql50 ~]# yum -y install mysql-community*
+
+3.启动服务
+[root@mysql50 ~]# systemctl start mysqld
+提示:第一次启动,需要初始化数据,会比较慢
+[root@mysql50 ~]# systemctl status mysqld
+[root@mysql50 ~]# systemctl enable mysqld
+
+4.mysql主要参数
+值                       #描述
+/etc/my.cnf         #MySQL主配置文件
+/var/lib/mysql      #数据库目录
+3306                     #默认端口号
+mysqld              #MySQL主进程名称
+TCP                 #传输协议
+msyql:mysql         #进程所有者与所属组
+/var/log/mysqld.log #错误日志文件
+
+5.配置MySQL管理员密码(默认数据库管理员账户为root)
+第一次启动时,mysql会自动为root账户配置随机密码,我们需要通过日志查看该密码
+
+[root@mysql50 ~]# grep password /var/log/mysqld.log
+2018-12-25T12:43:41.164573Z 1 [Note] A temporary password is generated for root@localhost:cvAd3af8a<j?
+
+root@mysql50 ~]# mysql-uroot -p'cvAd3af8a<j?'
+mysql> show databases;
+ERROR 1820 (HY000): You must reset your password using ALTER USER statement before executing this statement.
+注意:用该密码登录到服务端后,必须马上修改密码,不然会报上面的错误。
+
+策略参数:
+validate_password_policy
+值:
+0 或者 LOW       描述:长度
+1 或者 MEDIUM(默认) 长度;数字、大写、小写,特殊符号   描述:长度;数字、大写、小写,特殊符号
+2 或者 STRONG    描述:长度;数字、大写小写,特殊符号;字典文件
+
+mysql>set global validate_password_policy=0;     //只验证长度
+Query OK, 0 rows affected (0.00 sec)
+
+mysql>set global validate_password_length=6;     //修改密码长度,默认值是8个字符
+Query OK, 0 rows affected (0.00 sec)
+
+mysql>alter user user() identified by "123456";  //修改登陆密码
+Query OK, 0 rows affected (0.00 sec)
+
+修改密码后,可以数据库命令了!
+mysql>show databases;
+
+永久设置:
+# vim /etc/my.cnf
+//修改配置添加如下内容
+[mysqld]
+validate_password_policy=0    //只验证长度
+validate_password_length=6    //修改密码长度6,默认值是8个字符
+
+连接MySQL数据库的命令语法格式:
+[root@mysql50 ~]# mysql [-h服务器IP或域名  -u用户名 -p密码 数据库名称]
+[root@mysql50 ~]# mysql-h 127.0.0.1 -uroot -p123456
+
+注意事项:
+操作指令不区分大小写(密码和变量除外)
+每条SQL语句都以分号;结束
+默认不支持Tab键补齐
+\c 可以取消书写错误的命令
+
+常用的SQL命令分类:
+DDL数据定义语言(create,alter,drop)
+DML数据操作语言(insert,update,delete)
+DCL数据控制语言(grant,revoke)
+DTL 数据事务语言(commit,rollback,savepoint)
+
+
+
+
+密码: grep password /var/log/mysqld.log
+登录: mysql -u root -p
+改密码: set global validate_password_policy=0;
+	set global validate_password_length=6;
+	alter user user() identified by "123456";
+
+永久设置: vim /etc/my.cnf
+	validate_password_policy=0
+	validate_password_length=6
+
+查看当前数据库: select database();
+创建数据库:	create database tts character set utf8mb4;
+删除数据库:	drop database tts;
+查看所有可用编码:  show character set;
+查看当前数据库:   show databases;
+切换数据库:   use 库名;
+查看表结构:   desc 库.表;
+删除表:       drop table 库.表;
+显示当前用户: select user();
+
+
+提示:数据库命名规则
+(数字、字母、下划线,不能纯数字;区分大小写;不能使用关键词或特殊符号)
+
+创建数据表基本语法格式如下:
+create table 数据库名称.数据表名称(
+字段名1 数据类型(宽度) 约束条件,
+字段名2 数据类型(宽度) 约束条件,
+... ...
+);
+
+
+创建表:
+create table school.student(
+学号  	 char(20),
+姓名  	 char(20),
+性别 	 enum('男','女'),
+手机号   int(11),
+通信地址 char(50));
+
+创建表:
+create table myself1(name char(20),age tinyint unsigned, sex enum('boy','girl'));
+
+创建表:
+mysql> create table t7(
+    -> name char(8) not null,
+    -> age tinyint unsigned default 20,
+    -> class char(20) not null default "nsd1904",
+    -> sex enum('man','woman') default 'man',
+    -> pay float(7,2) default 28000
+     -> );
+
+
+查看数据表结构: desc school.student;
+插入数据:	insert into school.student values('NSD181001','葫芦娃','男',1388888888,'北京');
+查看所有数据:	select * from school.student;
+更新所有数据:           update school.student set 性别='女';
+更新满足条件数据:	update school.student set 性别='男' where 姓名='葫芦娃';
+删除满足条件的数据:	delete from school.student where 学号='NSD181003';
+删除表中所有数据:      delete from school.student;
+删除整个数据表:	drop table school.student;
+枚举类型(选择类型):  	enum(值1,值2,值3...)  #单选项
+			set(值 1,值 2,值 3...) #多选项
+
+MySQL 数据类型
+数值型:体重、身高、成绩、工资、金额
+字符型:姓名、地址、单位、邮箱
+枚举型:爱好、性别、专业
+日期时间型:出生日期、注册时间
+
+1. 字符类型
+类型 描述
+定长:char(字符数) 固定长度,最大长度255字符,不够指定的字符数时自动在右边填补空格,超
+出指定字符数则无法写入。
+
+变长:varchar(字符数) 可变长度,根据实际数据大小分配存储空间,超出指定字符数则无法写入。
+text/blob 字符数大于65535时使用。
+
+char(4)如果实际写入了 2 个字符,但是占用的空间是 4 个字符.
+varchar(30)如果实际写入了 2 个字符,实际仅占用 2 个字符的空间.
+
+2.数值类型
+类型           范围(有符号)     范围(无符号)          用途
+tinyint     -128~127       0~255           微小整数
+smallint    -32768~32767   0~65535         小整数
+mediumint   -2^23 ~2^23 -1   0~2^24 -1     中整数
+int         -2^31 ~2^31 -1   0~2^32 -1     大整数
+bigint      -2^63 ~2^63 -1   0~2^64 -1     极大整数
+float       -2^31 ~2^31 -1   0~2^32 -1     单精度浮点数(M,D)
+double      -2^63 ~2^63 -1   0~2^64 -1     双精度浮点数(M,D)
+#(M,D),其中 M 为总宽度,D 为小数位数,M 应大于 D
+#使用 unsigned 标记无符号存储
+
+3. 日期时间类型
+datetime日期时间类型,范围1000-01-01 00:00:00:000000~9999-12-31 23:59:59.999999
+如果不给该类型的数据赋值,则默认为NULL
+timestamp日期时间类型,范围1970-01-01 00:00:00:000000~2038-01-19 03:14:07.999999
+如果不给该类型的数据赋值,则mysql自动为其分配当前的系统时间
+
+时间格式:YYYYmmddhhmmss,或者"YYYY-mm-dd hh:mm:ss"
+
+date日期类型,范围0001-01-01~9999-12-31
+默认使用4位数字表示,当只用2位数字负值时:
+01~69自动识别为2001~2069
+70~99自动识别为1970~1999
+
+year年份类型,范围1901-2155
+time时间类型,范围HH:MM:SS
+
+mysql内置的时间函数: 
+获取当前的系统日期和时间: now()
+系统时间: sysdate()
+获取当前的系统时间: curtime()
+获取当前的系统日期: curdate()
+获取年: year()
+获取月: month()
+获取日: day()
+获取日期: date()
+获取时间: time()
+
+
+4. 枚举类型(选择类型)
+enum(值1,值2,值3...)   #单选项
+set(值 1,值 2,值 3...)  #多选项
+
+create table school.tea(
+-> name char(5),
+-> gender enum('boy','girl'),    #单选
+-> interest set('book','film','music','football'));  #多选
+
+##############################################################################################
+day2
+*********************************************************************************************************
+mysql> desc t2; //查看表结构
+
+alter table 库.表 执行动作;
+alter table 库.表 add(添加字段)...;
+alter table 库.表 modify(修改字段类型)...;
+alter table 库.表 change(修改字段名)...;
+alter table 库.表 drop(删除字段)...;
+alter table 库.表 rename(修改表名)...;
+
+往表结构最后添加字段:          alter table myself add homeaddr char(50);
+往表结构开头添加字段:         	alter table myself add homeaddr char(50) not null default 'gz' first;
+往表结构name字段后添加字段: 	alter table myself add homeaddr char(50) after name;	
+修改字段位置: 			alter table myself modify sex enum('boy','girl') after name;
+修改表结构字段类型:		alter table myself modify name varchar(25);
+修改表结构字段名称及类型:	alter table myself change age num char(20);
+删除字段:			alter table myself drop num;
+修改表名:			alter table myself rename school;
+更新表里的名称:		update t9 set id=8 where id=2;
+
+键值类型:
+根据数据储存要求,选择键值
+1.index 		普通索引
+2.unique		唯一索引
+3.fulltext		全文索引
+4.primary key  	主键
+5.foreign 可以  	外键
+	        
+索引优点:
+	通过常见唯一性索引,可以保证数据库中的每一行数据的唯一行
+	可以加快数据的查询速度
+索引缺点:
+	当对表中的数据进行增加,删除和修改的时候,索引也要动态的调整,降低了数据的维护速度
+	索引需要占物理空间
+
+index普通索引
+使用规则:
+	一个表中可以有多个index字段
+	字段的值允许重复,且可以赋NULL值
+	通常吧作为查询条件的字段设置为index字段
+	index字段 标志 MUL
+
+建表是创建索引:
+create table tea(
+-> id char(6) not null,
+-> name char(10),
+...
+-> index(name),-> index(id)
+-> );
+在已有的表里添加索引:	create index 索引名 on 表名(字段);
+查看索引:	show index from tea4\G;
+删除索引:	drop index 索引名 on 表名;
+
+primary key主键
+使用规则:
+	字段值不允许重复,且不允许赋null值
+	一个表里只能有一个primary key字段
+	多个字段都作为主键,称为复合主键,必须一起创建
+	主键字段的标志是PRI
+	主键通常与 auto_increment 连用
+	通常把表里唯一标识记录的字段设置为主键
+	[记录编号字段]	
+
+建表时创建主键:			create table t8(name char(3) primary key,id int);
+在已有表里添加主键:			alter table t8 add primary key (name);  数据不能有重复项
+删除主键:				alter table t8 drop primary key
+
+建表时创建复合主键:			create table t5(name char(10),class char(10),status enum('no','yes'),primary key(name,class));
+
+主键可以与auto_increment;连用:	create table t6( id int primary key auto_increment, name char(10), age int, sex enum('w','m'));
+			验证:	 	insert into t6(name,age,sex) values('tom',null,w);
+建表时创建外键:			create table t9(员工_id int primary key auto_increment,name char(20))engine=innodb;
+
+查看建表时命令:			show create table t9\G
+
+
+foreign key外键
+外键功能:
+	插入记录时,字段值在另一个表字段值范围内选择
+使用规则:
+	表储存引擎必须是innodb
+	字段类型要一致
+	被参照字段必须要是索引类型的一种(primary key)
+
+创建外键:				create table gzb(gz_id int,pay float(7,2),foreign key(gz_id) references t9(员工_id) on update cascade on delete 					cascade)engine=innodb;
+
+使用外键时,必须原表里有相同的字段:	insert into gzb values(1,50000);
+
+show create table gzb\G;
+#查看建表的详细信息，可以查看到外键的约束信息
+删除外键:				alter table gzb drop foreign key gzb_ibfk_1;
+
+##############################################################################################
+day3
+*********************************************************************************************************
+
+概述:
+1.数据导入导出
+         检索目录:查看默认检索目录
+	 数据导入
+	 数据导出
+
+secure_file_priv  mysqld 用这个配置项来完成对数据导入导出的限制 
+
+ 
+查看所有变量(变量值)(检索目录)(搜索路径): show variables;
+查看指定变量(变量值)(检索目录)(搜索路径):  show variables like “secure_file_priv”
+
+
+步骤一:修改检索目录为/myload
+1)修改配置文件,重启服务
+]# mkdir /myload
+]# chown mysql /myload
+]# vim /etc/my.cnf
+[mysqld]
+secure_file_priv="/myload”
+:wq
+
+]# systemctl restart mysqld
+
+mysql> show variables like “secure_file_priv”; //查看
++------------------+-------------------------------+
+| Variable_name    | Value    |
++------------------+-------------------------------+
+| secure_file_priv | /myload/ |
++------------------+-------------------------------+
+
+2)新建 db3 库、user 表
+[root@dbsvr1 ~]# mysql -u root –p123456
+
+mysql> CREATE DATABASE db3;
+-> create table db3.user(
+-> name char(50),
+-> password char(1),
+-> uid int,
+-> gid int,
+-> comment char(150),
+-> homedir char(50),
+-> shell char(50)
+-> );
+Query OK, 0 rows affected (0.70 sec)
+
+
+步骤二:将/etc/passwd 文件导入 db3 库的 user 表里,并添加行号字段。
+
+1)拷贝文件到检索目录下
+[root@dbsvr1 ~]# cp /etc/passwd  /myload/
+
+2)导入数据
+mysql> load data infile "/myload/passwd" into table db3.user
+->fields terminated by ":" lines terminated by "\n" ; //导入数据
+
+mysql> select * from db3.user; //查看表记录
+
+mysql> alter table db3.user
+-> add
+-> id int primary key auto_increment first; //添加行号 id 字段
+
+mysql> select * from db3.user;              //查看表记录
+
+
+步骤三:将 db3 库 user 表所有记录导出, 存到/myload/user.txt 文件里。
+
+1)查询要导出的数据
+mysql> select * from db3.user ;
+
+2)导出数据
+mysql> select * from db3.user into outfile "/myload/user1.txt";
+
+mysql> select id,name,uid,shell from user where id<=5 into outfile "/myload/user1.txt" 
+-> fields  terminated by ""  lines terminated by "";
+
+3)查看文件内容
+mysql>system  cat /myload/user1.txt
+
+secure_file_priv  mysqld 用这个配置项来完成对数据导入导出的限制 
+
+ 
+
+
+
+2.管理表记录
+	插入表记录 : insert into 库.表 values(值列表),(值列表)...;
+		    insert  into 库.表(表字段)  values(值列表),(值列表)...;
+	
+	查询表记录 : select * from 库.表; 
+ 		    select * from 库.表 where 条件表达式;(name="tom")
+		    select  字段1,字段2..  from 库.表;         
+		    select  字段1,字段2..  from 库.表 where 条件表达式;(id<=2)
+
+	更新表记录 : update 库.表 set 字段名=值,字段名=值...;
+		    update 库.表 set 字段名=值,字段名=值... where 条件表达式;
+
+	删除表记录 : delete from 库.表;
+		    delete from 库.表 where 条件表达式;
+
+3.匹配条件
+	3.1 基本匹配条件
+		数值比较: =   >   <   >=   <=   !=(不等于)
+		字符比较: 
+	=(相等)               如:name="root"
+	!=(不相等)            如:name!="root"
+	ls null(值为空)       如:shell ls null
+	ls not null(值非空)   如:shell ls not null
+insert into  db3.user(name) values(null)(空),(NULL)(空),("")(非空),("null")(非空);
+
+	逻辑匹配(多个判断条件)
+	逻辑与 and 或 && 多个条件必须同时成立
+	逻辑或 or 或 ||    多个条件某一个条件成立即可
+	逻辑非 ! not     取反
+
+		范围内匹配:
+	select name from db3.user where name in ("adm","sync","mysql","bin");
+	#查看name字段值中包含adm或sync或mysql或bin字符的记录
+	select name id from db3.user where name in (12,70,23);
+	#查看id字段值为12或70或23 的记录
+	select name,shell from db3.user where shell not in ("/bin/bash","sbin/nologin");
+	#查看shell字段值不包含/bin/bash或/sbin/nologin的记录
+	select name,shell from db3.user where uid between 10 and 20;
+	#查看uid字段值范围在10到20之间的记录
+
+		去重显示
+	select distinct shell from db3.user;	
+
+格式:
+in (值列表)               在...里...
+not in (值列表)           不在...里...
+between 数字 and 数字       在...之间...
+distinct 字段名              去重显示
+
+
+	3.2 高级匹配条件
+		模糊查询 like
+		where 字段名 like '表达式';
+			_表示一个字符
+			%0个或多个字符
+	select name from db3.user where name like '___';
+	#查询name字段值为三个字符的记录
+	select name from db3.user where name like '%a%';
+	#查询name字段值里有a的的记录
+	select name from db3.user where name like "____%";
+	#查新name字段值为四个及四个以上字符的记录
+		正则表达式 regexp
+		where 字段名 regexp '正则表达式';
+	select name from db3.user where name regexp '^a';
+	#查询name字段值中以a开头的记录
+	select name from db3.user  where name regexp 't$';
+	#查询name字段值中以t结尾的记录
+	select name from db3.user where name regexp '^r.*t$';
+	#查询name字段值中以r开头t结尾的记录
+		
+		四则运算 + - * /
+	alter table db3.user add system int default 80 , add mysql int default 80;
+	alter table db3.user add age tinyint default 19  after name;
+	#添加表字段system默认80 mysql默认80 在字段name后面添加age默认19
+	select name ,age,2019 - age csyf from db3.user;
+	#查询字段值name,age,csyf出生年份(2019-19)
+  	select name ,uid from db3.user where   uid%2 = 0;
+	#查询uid字段值为偶数的记录
+	select name ,uid from db3.user where   uid%2 != 0;
+	#查询uid字段值为奇数的记录
+	update db3.user set uid=uid+1 where uid<=7;
+	#更改uid字段值小于等于7的值加一
+		()提高优先级
+	select name ,system, mysql , mysql+system zfs ,(system+mysql)/2 pzf from db3.user where name="root";
+	#查询字段name和system和mysql和zfs(总分数mysql加system的分数)和pzf(平均分mysql加system的分数除以2)的值 
+
+	3.3 操作查询结果
+		聚集函数 (mysql服务内置对数据做统计的命令)
+		avg(字段名)   统计字段平均值
+		sum(字段名) 	统计字段之和
+		min(字段名)	统计字段最小值
+		max(字段名)	统计字段最大值
+		count(字段名) 统计字段值个数
+	
+	select max(uid) from db3.user;
+	#查询字段uid最大值的记录
+	select min(uid) from db3.user;
+	#查询字段uid最小值的记录
+	select avg(uid) from db3.user;
+	#查询字段uid的平均值
+	select sum(uid) from db3.user;	
+	#查询字段uid的总和值
+	select count(uid) from db3.user;
+	#查询字段uid的值个数
+	select count(*) from db3.user;
+	#查询数据行数
+	
+		查询结果排序 order by 字段名 asc | desc;
+	select name ,uid from db3.user where uid >=10 and uid <=1000;
+	#按默认原本的顺序显示
+	select name ,uid from db3.user where uid >=10 and uid <=1000 order by uid (asc可不写);
+	#按升序显示
+	select name ,uid from db3.user where uid >=10 and uid <=1000 order by uid desc;
+	#按降序显示
+	
+		查询结果分组  group by 字段名;
+	select shell from db3.user;
+	#查看字段shell所有的值
+	select shell from db3.user group by shell;
+	#查看字段shell值的分组
+	select shell from db3.user where uid<=500;
+	#查看字段shell  uid小于等于500的值
+	select shell from db3.user where uid<=500  group by shell;
+	#查看字段shell  uid小于等于500的值的分组
+
+		查询结果过滤  having 条件
+	select name from db3.user where shell != "/bin/bash";
+	select name from db3.user where shell != "/bin/bash" having name= "mysql";
+	#对结果再次进行过滤
+
+		限制查询结果显示行数 limit  数字;
+	select id ,name ,shell homedir from db3.user where uid <=15 limit 3;
+	#限制显示前三行
+	select id ,name ,shell homedir from db3.user where uid <=15 limit 4,3;
+	#限制显示5 6 7行  从第五行开始,显示三行  第一行为数字0,第二行为数字1.......
+
+4.mysql管理工具
+		常见的mysql管理工具:
+	mysql   		命令行		跨平台		MySQL官方bundle包自带	
+	MySQL-Workbench	图形		跨平台	 	MySQL官方提供 		
+	MySQL-Front		图形		Window	开源,轻量级客户端软件
+	Navicat		图形		Window  	专业,功能强大,商业版
+	phpMyAdmin  	浏览器  	跨平台 	开源,需LAMP平台
+
+		基本思路
+	1.部署环境LAMP
+	2.启动httpd服务
+	3.解压phpMyAdmin包,并移动到网站目录
+	4.配置config.inc.php,指定MySQL服务器地址
+	5.流浪器访问,使用数据库管理员root登录
+	
+	#yum -y install httpd php php-mysql
+	#systemctl start httpd
+	#systemctl enabled httpd
+
+	#tar -zxvf phpMyAdmin-2.11.11-all-languages.tar.gz
+	#cp config.sample.inc.php config.inc.php  //创建主配置文件
+	
+	#vim config.inc.php
+	17 $cfg['blowfish_secret'] = 'oyz123'           //cookies
+	31  $cfg['Servers'][$i]['host'] = 'localhost';  //数据库服务器IP地址
+
+########################################################################################
+day5
+########################################################################################
+
+一. 用户授权  添加用户并设置权限
+		命令格式:
+	grant 权限列表 on 库.表 to 用户名@"客户端地址" identified by "密码" //授权用户密码
+	with grant option; //有授权权限,可选项
+	grant all on *.* to mydba@"%"   identified by "123456" with grant option;
+	#授权全部权限给所有客户端登录mydba用户 密码是123456 有授权权限可选项
+	
+	grant 权限列表(字段1..字段N) on 库.表 to 用户名@"客户端地址" identified by "密码"
+	grant select, update(name,id) on db3.user to yaya@"%" identified by "123456";
+	#授权字段权限
+
+		权限列表:
+	all: 所有权限
+	usage: 无权限
+	select,update(字段1,...,字段N)  //指定字段
+
+		用户名:
+	授权时打自定义 要有标示性
+	储存在mysql库的user表里
+
+		客户端地址:
+	% : 所有主机
+	192.168.4.% : 网段内所有主机
+	192.18.4.1 : 一台主机
+	localhost : 数据库服务器本机
+ 
+		相关命令:
+	登录用户使用
+	select user();
+	#显示登录用户名及客户端地址
+	show grants; 
+	#用户显示自身访问权限
+"	show grants for 用户名@"客户端地址";           "
+	#管理员查看已有授权用户权限
+	set password=password("密码");
+	#授权用户链接后修改链接密码
+"	set password for 用户名@"客户端地址" = password("密码");       "
+	#管理员重置授权链接密码
+	drop	user	  用户名@"客户端地址"
+	删除授权用户(必须有管留员权限)
+	
+	information_schema (虚拟库,储存在内存里,映射在mysql,只读,不可写)
+	password()mysql内置明文加密命令
+
+
+		授权库  mysql (授权信息)
+	user		 #记录已有的授权用户及权限
+	select host,user from mysql.user;
+	#查看user表的客户端地址用户
+"	show grants for "mysql.sys"@"localhost";  "
+"	show grants for admin2@localhost;          "
+	#查看用户的授权信息      
+	
+	db表		#已有授权用户对数据库的访问权限
+	update mysql.db set Delete_priv="N" where db="db3" and user="admin2" and host="localhost";
+	#修改admin2用户的删除权限为NO 撤销admin2用户的权限
+	flush privileges
+	#刷新用户权限列表
+	
+	tables_priv表	#记录已有授权用户对表的访问权限
+	select host,db,user,table_name from mysql.tables_priv;
+	select * from mysql.tables_priv where user="admin" \G;
+
+	columns_priv表	#记录已有授权用户对字段的访问权限
+	grant select, update(name,id) on db3.user to yaya@"%" identified by "123456";
+	#授权name,id字段的select,update权限给yaya用户允许所有客户端地址连接,密码是123456
+"	show grants for yaya@"%";
+	#查看yaya用户的授权信息                        "
+	select * from mysql.columns_priv \G;
+	#查看用户对字段的访问权限
+	
+		删除授权用户:
+	drop user yaya@"%";
+		
+		撤销权限:
+	revoke 权限列表 on 库.表 from 用户名@"客户端地址";
+	revoke grant option  on *.* from mydba@"%";
+	#撤销用户mydba的授权权限
+"	show grants for mydba@"%"; 
+	#查看mydba的权限信息                                 "
+	revoke drop ,delete on *.* from mydba@"%";
+	#撤销用户mydba的drop ,dalete权限
+	revoke all on *.* from mydba@"%";
+	结果:GRANT USAGE ON *.* TO 'mydba'@'%'
+	#撤销用户mydba所有的权限
+	撤销所有权限后会显示USAGE(没有任何权限),但用户依然存在,可以登录,不能执行任何操作
+
+		恢复root密码
+	]# vim /etc/my.cnf
+		[mysqld]
+		skip-grant-tables
+	]# systemctl restart mysqld
+	]# mysql
+	select * from mysql.user \G;(复制authentication_string)
+	update mysql.user set authentication_string=password("密码") where user="root";
+	exit
+	]# vim /etc/my.cnf
+		[mysqld]
+		#skip-grant-tables
+	systemctl restart mysqld
+	mysql -uroot -p新密码
+		
+		重置密码
+	~]# mysqladmin -uroot -p password "新密码" 
+	Enter password:旧密码
+
+二 数据备份
+	1.物理备份
+		1.1冷备 : cp tar ... ...
+		   物理备份 
+	cp -r /var/lib/mysql  dbbak/mysql.bak
+	scp -r dbbak/mysql.bak  root@192.168.4.51:~
+		
+		1.2物理恢复
+	systemctl restart mysqld	
+	rm -rf /var/lib/mysql
+	cp -r /root/mysql.bak  /var/lib/mysql
+	chown -R myslq /var/lib/mysql
+	systemctl restart mysqld
+
+	2.逻辑备份
+	
+	备份时库名的表达方式:
+	--all-database 或 -A    //所有库
+	数据库名		     //单个库
+	数据库.表名                 // 单张表
+	-B 数据库1  数据库2        // 多个库
+
+	2.1完全备份 : 备份所有数据 
+	]# mysqldump -uroot  -p"密码"  -A  > dbbak/mysql.sql
+	#备份导出所有数据到mysql.sql文件
+	]# mysqldump -uroot -p""  db3  > dbbak/db3.sql
+	#备份导出db3库的数据到db3.sql文件
+	]# mysqldump -uroot -p"" -B db3 db4 > dbbak/twodb.sql
+	#备份导出db3库和db4库的数据到twodb.sql文件
+	
+	]# mysqldump -uroot -p""   db3 user  > dbbak/user.sql
+	#备份导出db3.user表数据到user.sql文件里
+	
+	2.2完全恢复(恢复单个库或表时需要添加库)
+	drop database db3;
+	drop database db4;
+	#删除db3和db4库
+	]# mysql -u root -p""  < twodb.sql
+	#恢复,导入twodb.sql的数据到数据库生成db3库和db4库
+	
+	]# mysql -u root db3 -p"" < user.sql
+	#恢复,导入user.sql的数据到数据库的db3库里
+	show databases;
+	
+	3.增量备份 :  (启用mysql服务的binlog日志文件) 
+	  备份上次备份后,所有新产生的数据
+	3.1 binlog日志的使用
+		1.binlog日志介绍
+	binlog也称作 二进制日志
+	MySQL服务日志文件的一种
+	记录除查询之外的所有的SQL命令
+	可用于数据备份和恢复
+	配置mysql主从同步的必要条件
+
+
+
+
+		2.启用日志
+	server_id=数字   //指定id值(1-255)
+	log-bin[=目录名/文件名]   //启用binlog日志
+	max_binlog_size=数值m    //指定日志文件容量,默认1G	
+	
+	binlog相关文件
+	主机名-bin.index          //索引文件
+	主机名-bin.000001     	//第一个二进制日志
+	主机名-bin.000002     	//第二个二进制日志	
+	... ...
+
+	]# vim /etc/my.cnf
+		[mysqld]
+		log-bin
+		server_id=50
+	]# systemctl restart mysqld
+	]# ls /var/lib/mysql/*-bin*	
+	/var/lib/mysql/mysql50-bin.000001
+	/var/lib/mysql/mysql50-bin.index
+	#查看日志文件
+
+
+		3.手动创建新的日志文件
+	]# systemctl restart mysql
+	#重启一次服务刷新生成一次日志文件
+	]# mysql -uroot -p"" -e "show databases"
+	#在linux命令行使用mysql命令查看所有库
+	]# mysql -uroot -p"" -e "flush logs"
+	#在linux命令行使用mysql命令刷新生成日志文件
+	flush logs;
+	#刷新生成日志文件
+	]# mysqldump -uroot -p"" --flush-logs db3 > dbbak/db3.sql
+	#完全备份后刷新生成日志文件
+	
+		  删除已有的日志文件
+	purge master logs to "mysql50-bin.000003";
+	#删除编号3之前的日志文件
+	reset master;
+	#清空还原所有日志文件
+
+
+
+		4.修改日志记录格式
+	三种记录方式 :
+	1.statement    //报表模式
+	2.row		  // 行模式
+	3.mixed	  // 混合模式
+
+	]# vim /etc/my.cnf
+		[mysqld]
+		binlog_format="mixed"
+	#更改配置文件日志记录格式为mixed  默认记录格式是ROW
+	]# systemctl restart mysqld
+	show variables like "binlog_format";
+	reset master;
+	show master status;
+	#查看当前使用的日志文件名称	
+	
+		5.查看日志内容
+	mysqlbinlog /var/lib/mysql/mysql50-bin.000001 | grep -i create
+	mysqlbinlog /var/lib/mysql/mysql50-bin.000001 | grep -i drop
+	mysqlbinlog /var/lib/mysql/mysql50-bin.000001 | grep -i update
+	mysqlbinlog /var/lib/mysql/mysql50-bin.000001 | grep -i insert
+	#除查询之外的mysql命令的历史记录
+
+		6.修改日志文件的存储位置及文件命名
+	]# mkdir /mylog
+	]# chown -R  mysql /mylog
+	]# ls -ld /mylog
+	]# vim /etc/my.cnf
+		[mysqld]
+		binlog_format="mixed"
+		server_id=50
+		log-bin=/mylog/db50
+	:wq
+	]# systemctl restart mysqld
+	]# ls /mylog/db50.*
+	/mylog/db50.000001  /mylog/db50.index
+	show master status;
+	#查看当前使用的日志文件名称
+	Position   #偏移量,初始状态为154,每次都改都会变动
+	
+	mysql50:	
+	select count(*) from db3.user;
+	]# mysqldump -u root db3 > dbbak/db3.sql
+	]# scp dbbak/db3.sql root@192.168.4.51:~	
+	insert into db3.user(name,uid) values("dc","201");
+	insert into db3.user(name,uid) values("dc1","201");
+	insert into db3.user(name,uid) values("dc2","201");
+	#新增内容
+	show master status;
+	#查看当前使用的日志文件文件名称
+	select count(*) from db3.user;
+	
+
+	mysql51:
+	]# mysql -u root db3 < db3.sql
+	#恢复db3库数据
+	select count(*) from db3.user;	
+
+
+		7.日志文件如何区分记录的多条SQL命令
+	偏移量
+	时间点
+		8.使用binlog日志恢复数据
+	格式:
+	mysqlbinlog 日志文件  | mysql -uroot  -p""
+	mysqlbinlog  选项  日志文件  | mysql -uroot  -p""	
+
+	选项:
+	起始偏移量: --start-position=数字  
+	结束偏移量: --stop-position=数字
+	起始时间点: --start-datetime="yyyy-mm-dd hh:mm:ss"
+	结束时间点: --stop-datetime="yyyy-mm-dd hh:mm:ss"
+
+	]# scp /mylog/db50.000001 root@192.168.4.51:~
+	select count(*) from db3.user;
+	
+	]# mysqlbinlog --start-position=1608 --stop-position=3037 db50.000001 | mysql -u root
+	#恢复偏移量1068到3037的数据
+
+
+	4.差异备份 : 备份完全备份后,所有新产生的数据
+	
+	
+#############################################################################################
+day5
+#############################################################################################
+
+
+常用的MySQL备份工具
+	物理备份缺点:
+		跨平台性差
+		备份时间长,冗余备份,浪费储存空间
+	mysqldump备份缺点:
+		效率低,备份和还原速度慢,锁表
+		备份过程中,数据插入和更新操作被阻止
+
+XtraBackup工具
+	一款强大的在线热备份工具
+	备份过程中不锁表,适合生产环境
+	有专业组织Percona提供(改进MySQL分支)
+	
+	主要含两个组件:
+	xtrabackup : C程序 ,支持InnoDB/XtraDB
+	innobackupex : 以Perl脚本封装xtrabackup,还支持MyISAM
+
+
+	真机传给虚拟机:
+	]$ scp /linux-soft/03/mysql/percona-xtrabackup-24-2.4.7-1.el7.x86_64.rpm root@192.168.4.50:~
+	]$ scp /linux-soft/03/mysql/libev-4.15-1.el6.rf.x86_64.rpm root@192.168.4.50:~
+	虚拟机安装:
+	]$ rpm -ivh libev-4.15-1.el6.rf.x86_64.rpm		
+	]$ yum -y install percona-xtrabackup-24-2.4.7-1.el7.x86_64.rpm
+	]# innobackupex --help
+	]# man innobackupex
+	#使用帮助可以查看命令格式
+
+	1.使用innobackupex 对数据做备份和恢复
+		1.1 命令格式
+	完全备份:
+		innobackupex --user用户名 --password密码 备份目录名 --no-timestamp
+	完全恢复:
+		innobackupex --apply-log 目录名 //准备恢复数据
+		innobackupex --copy-bak 目录名  //恢复数据
+	增量备份:
+		innobackupex --user用户名 --password密码 --incremental 增量目录  --incremental-basedir=目录名 --no-timestamp
+	增量恢复:
+		innobackupex --apply-log --redo-only 目录名 --incremental-dir=目录名 //准备恢复数据
+
+
+
+		1.2 常用命令选项
+	--host		#主机名
+	--user		#用户名
+	--port		#端口号
+	--password		#密码
+	--database 		#数据库名
+	--no-timestamp	#不用日期命名备份文件储存的子目录
+	--redo-only 	#日志合并
+	--apply-log		#准备恢复数据
+	--copy-back		#拷贝数据
+	--incremental 目录名 	#增量备份
+	--incremental-basedir=目录名
+	#增量备份时,指定上一次备份数据存储的目录名
+	--incremental-dir=目录名
+	#准备恢复数据时,指定增量备份数据存储的目录名
+	--export		#导出表信息
+	import 		#导入表空间
+		1.3 完全备份与恢复
+	备份:
+	]# innobackupex --user root --password 123456 /allbak --no-timestamp
+	#完全备份到指定目录下,不用日期命名备份文件存储的子目录名
+	]# scp -r /allbak/ root@192.168.4.51:~	
+	
+	恢复:
+	]# systemctl stop mysqld
+	#暂停服务
+	]# rm -rf /var/lib/mysql/*
+	#清空所有数据
+	]# innobackupex --apply-log /root/allbak
+	#准备恢复allbak目录下的数据
+	]# cat allbak/xtrabackup_checkpoints
+	#查看备份类型以及备份详细信息
+	]# innobackupex --copy-back allbak/
+	#恢复数据	
+	]# ls /var/lib/mysql -l
+	]# chown -R  mysql /var/lib/mysql/
+	#修改所有者
+	]# systemctl restart mysqld
+	#重启服务
+
+		1.4 恢复完全备份中的单张表
+	操作步骤:
+	删除表空间
+	导出表信息
+	拷贝表信息文件到数据库目录下
+	修改表信息文件的所有者及组用户为mysql
+	导入表空间
+	删除数据库目录下的表信息文件
+	查看表记录
+	
+	*.ibd : 表空间文件,存放表数据文件
+	*.frm : 存放表结构的文件
+	*.cfg和*.exp :　表信息	
+
+	delete from db5.b;
+	#删除报表里的所有数据,表结构和表还在
+	system ls /var/lib/mysql/db5/
+	#查看b表的表空间文件
+	alter table db5.b discard tablespace;
+	#删除b表的表空间
+	desc b;
+	show tables;
+	select * from b;
+	#表还在,但查看会报错
+
+	]# innobackupex --apply-log --export /allbak/
+	#完全备份文件夹中导出表信息
+	]# ls /allbak/db5/	
+	]# cp /allbak/db5/b.{cfg,exp,ibd} /var/lib/mysql/db5/
+	#拷贝表信息文件
+	]# chown -R mysql.mysql /var/lib/mysql/db5/
+	#修改所有者/组
+	]# ls -l /var/lib/mysql/db5/
+
+	alter table db5.b import tablespace;
+	#导入表空间
+	system rm -rf /var/lib/mysql/db5/b.{cfg,exp}
+	#删除表信息文件,不是mysql的文件格式,不删除会影响mysql的使用
+	
+
+		1.5 增量备份与恢复
+	增量备份:备份上次备份后,所有新产生的数据
+	首次备份数据(完全备份)
+	]# innobackupex --user root --password 123456 /datafull --no-timestamp
+	]# ls /datafull/
+	
+	第二次备份(增量备份)
+	select count(*) from db5.a;
+	insert into db5.a values(1);
+	....;
+	select count(*) from db5.a;	
+			
+	]# innobackupex --user root --password 123456 --incremental /new2dir --incremental-basedir=/datafull --no-timestamp;
+	#增量备份,指定增量备份目录为/new2dir, 指定上次一备份的/datafull目录作为参考,不用日期命名备份文件储存的子目录
+	]# ls /new2dir/
+	]# cat /new2dir/xtrabackup_checkpoints
+	#查看备份类型以及备份详细信息
+	
+	
+	第三次备份(增量备份)
+	select count(*) from db5.a;
+	insert into db5.a values(2);
+	....;
+	select count(*) from db5.a;	
+			
+	]# innobackupex --user root --password 123456 --incremental /new3dir --incremental-basedir=/datafull --no-timestamp;
+	#增量备份,指定增量备份目录为/new3dir, 指定上次一备份的/new2dir目录作为参考,不用日期命名备份文件储存的子目录
+	]# ls /new3dir/
+	]# cat /new3dir/xtrabackup_checkpoints
+	#查看备份格式以及备份详细信息
+	
+	第四次备份(增量备份)
+	... ... 
+	
+	增量恢复
+	格式:
+	]# innobackupex --apply-log --redo-only 目录名 --incremental-dir=目录名
+	#准备恢复
+	]# innobackupex --copy-back 目录名 
+	#恢复数据
+	
+	]# systemctl stop mysqld
+	]# rm -rf /var/lib/mysql/*
+	
+	准备恢复数据
+	]# innobackupex --apply-log --redo-only datafull/
+	
+	合并数据	
+	]# cat datafull/xtrabackup_checkpoints
+	backup_type = log-applied(合并日志类型)
+	from_lsn = 0
+	to_lsn = 2168627
+	last_lsn = 2188828
+	compact = 0
+	recover_binlog_info = 0
+
+	]# innobackupex --apply-log --redo-only datafull/ --incremental-dir=new2dir
+	]# cat datafull/xtrabackup_checkpoints
+	backup_type = log-applied(合并日志类型)
+	from_lsn = 0
+	to_lsn = 3158320
+	last_lsn = 3158329
+	compact = 0
+	recover_binlog_info = 0
+
+	]# innobackupex --apply-log --redo-only datafull/ --incremental-dir=new3dir
+	]# cat datafull/xtrabackup_checkpoints 
+	backup_type = log-applied(合并日志类型)
+	from_lsn = 0
+	to_lsn = 3163161
+	last_lsn = 3163170
+	compact = 0
+	recover_binlog_info = 0
+
+	拷贝数据
+	]# innobackupex --copy-back datafull/
+	]# ls /var/lib/mysql/
+	]# chown -R mysql.mysql /var/lib/mysql/
+	]# systemctl restart mysqld
+	]# rm -rf new*
+
+#########################################################################################
+RDBMS1知识总结
+#########################################################################################
+	数据库服务介绍
+	搭建mysql数据库服务器
+	数据库服务器的基本使用: 登录 断开 建表 建库 记录管理
+	mysql数据类型
+	修改表结构 mysql键值 (index   primary key  复合主键 外键)
+	对数据做操作: 数据导入导出 记录的增删改查 匹配条件
+	用户授权 root密码  图形工具phpmyadmin
+	数据的备份和恢复:
+	物理备份:cp tar innobackupex 
+	逻辑备份:mysqldump binlog
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

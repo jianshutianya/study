@@ -12632,18 +12632,6 @@ Oracle	mysql	PostgreSQL	SQLserver
 
 
 
-常见软件
-主流操作系统：Uginx 、 Linux 、 Windows
-软件名		开源		跨平台	厂商
-Oracle 		否		是		甲骨文
-MySQL		是		是		甲骨文
-SQL Server	否		否		微软
-DB2			否		是		IBM
-Redis		是		是		开源软件
-Mecmcache	是		是		开源软件
-MongoDB		是		是		开源软件
-
-
 专业术语
 DB（DataBase）
 	-数据库
@@ -13045,8 +13033,6 @@ time() 范围HH:MM:SS
 
 tmooc  PPT   案例1 
 
-
-
 ++++++RDBMS1-DAY01
 1 数据库相关概念？ 
 2 搭建MySQL数据库服务器？ 装包 修改配置文件 启动服务 登陆
@@ -13379,4 +13365,448 @@ mysql> select  id,name,shell,homedir  from  db3.user
 
 4、MySQL管理工具
 	4.1 安装图形工具phpmyadmin
+
+++++++RDBMS1_day04
+	192.168.4.50   192.168.4.51
+1、用户授权
+	1.1 授权： 添加用户并设置权限
+	1.2 命令格式 mysql> grant 
+    grant  权限列表  on   库名  to  用户名@”客户端地址” 
+    identified  by  “密码” //授权用户密码
+    with  grant  option ;    //有授权权限 ,可选项
+
+        1.3  授权库 mysql (授权信息)
+		user表    记录已有的授权用户及权限
+
+select host , user from  mysql.user;
+show grants for  "mysql.sys"@"localhost";
+mysql> show  grants  for  admin2@"localhost";
+
+
+		db表       记录已有授权用户对数据库的访问权限
+mysql> update mysql.db set Delete_priv="N"  where db="db3" and user="admin2" and host="localhost"\G;
+
+mysql> flush privileges;
+
+mysql> show  grants  for  admin2@"localhost"; 
+
+mysql> select  * from  mysql.db  where db="db3" and user="admin2" and host="localhost"\G; 
+
+
+		tables_priv表       记录已有授权用户对表的访问权限
+
+mysql> select host , db  , user  ,table_name from  mysql.tables_priv;
+		
+mysql> select  * from  mysql.tables_priv where user="admin"\G;
+
+mysql> show grants for  admin@"192.168.4.%";
+
+		columns_priv表   记录已有授权用户对字段的访问权限
+mysql> grant select,update(name , uid ) on  db3.user  to yaya99@"%"
+    -> identified by "123qqq...A";
+
+mysql> show grants for  yaya99@"%";
+
+mysql> select  * from  mysql.columns_priv \G;
+		
+		1.4 删除授权用户
+			mysql> drop user yaya99@"%" ;
+			mysql> select user ,host from mysql.user;
+
+		1.5 撤销权限 （删除用户的访问权限）
+			命令格式：
+			mysql> revoke  权限列表  on  库名.表   from    
+             用户名@"客户端地址";
+
+		mysql> revoke grant option on  *.* from mydba@"%" ;
+		mysql> show  grants  for  mydba@"%" ;
+		mysql> revoke  drop ,delete  on *.*  from  mydba@"%" ;
+		mysql> show  grants  for  mydba@"%" ;
+		mysql> revoke  all  on *.*  from  mydba@"%" ;
+		mysql> show  grants  for  mydba@"%" ;
+
+		1.4  恢复root密码   练习时间10分钟到 14：28
+]# vim /etc/my.cnf
+   [mysqld]
+    skip-grant-tables
+   :wq
+]# systemctl restart mysqld
+
+]# mysql
+mysql> select user,host , authentication_string from mysql.user;
+mysql> update  mysql.user set  authentication_string=password("aaa123...A")
+       where user="root" and host="localhost";
+
+mysql> flush privileges;
+mysql> exit
+
+]# vim /etc/my.cnf
+    [mysqld]
+      #skip-grant-tables
+   :wq
+]# systemctl restart mysqld
+]# mysql -uroot -paaa123...A
+mysql> show databases;
+		1.5 修改数据库管理员root 用户本机登陆密码
+		
+[root@host50 ~]# mysqladmin  -uroot -p  password "123456"
+Enter password: 	输入旧密码
+
+	     ]# mysql  -uroot -p123456   //使用修改的密码登陆
+
+
+2、完全备份
+	2.1 相关概念
+	
+	2.2 物理备份与恢复  练习时间6分钟 到 15：01 
+	           物理备份 192.168.4.50
+]# mkdir /dbbak
+]# cp  -r /var/lib/mysql  /dbbak/mysql.bak
+]# ls /dbbak/mysql.bak/
+]# scp -r /dbbak/mysql.bak  root@192.168.4.51:/root/
+
+	           物理恢复 192.168.4.51
+]# systemctl  stop mysqld
+]# rm -rf /var/lib/mysql
+]# cp -r /root/mysql.bak/  /var/lib/mysql
+]# chown  -R mysql:mysql /var/lib/mysql
+]# systemctl  start mysqld
+]#mysql -uroot -p123qqq...A
+mysql> show databases;	
+
+
+	完全备份 mysqldump 
+	]# mysqldump -uroot -p123qqq...A  --all-databases > /dbbak/all.sql
+	]# mysqldump -uroot -p123qqq...A  db3 > /dbbak/db3.sql
+	]# mysqldump -uroot -p123qqq...A  db3 user > /dbbak/db3_user.sql
+	]# mysqldump -uroot -p123qqq...A  -B db3 db4 > /dbbak/twodb.sql
+
+	]# ls /dbbak/*.sql
+
+	]# cat /dbbak/db3.sql
+	
+	]# scp  /dbbak/twodb.sql  root@192.168.4.51:/root/
+	完全恢复 192.168.4.51
+	]# mysql -uroot -p123qqq...A
+	mysql> drop  database  db3;
+	mysql> drop  database  db4;
+	mysql> show  databases;
+	mysql> exit
+
+	]# mysql -uroot -p123qqq...A <  /root/twodb.sql
+	]# mysql -uroot -p123qqq...A
+	mysql> show  databases;
+	mysql> use db3;
+	mysql> show  tables;
+	mysql> select count(*) from user;
+
+3、增量备份 (启用mysql服务的binlog日志文件)
+
+	3.1 binlog日志的使用
+		1、binlog日志介绍
+
+		2、启用日志
+	]# vim /etc/my.cnf
+		[mysqld]
+		server_id=50
+		log-bin
+	:wq
+
+	]# systemctl  restart mysqld
+	]# cd /var/lib/mysql
+	]# ls  *-bin.*
+host50-bin.000001  host50-bin.index
+
+		3、手动创建新的日志文件
+   ]# systemctl  restart mysqld
+   ]# systemctl  restart mysqld
+
+   ]# mysql -uroot -p123qqq...A  -e "show databases"
+   ]# mysql -uroot -p123qqq...A  -e "flush logs"
+
+   ]# mysql -uroot -p123qqq...A 
+      mysql> flush  logs;
+      mysql> flush  logs;
+
+   ]# mysqldump -uroot -p123qqq...A  --flush-logs  db3 > /dbbak/db3.sql
+
+		删除已有的日志文件
+mysql> purge  master  logs  to  "host50-bin.000003";
+
+mysql> reset  master ;
+		
+mysql> show  master status;
+	
+
+		4、修改日志记录格式
+]# vim /etc/my.cnf
+ [mysqld]
+  binlog_format="mixed"
+:wq
+
+]# systemctl restart  mysqld
+]# mysql  -uroot -p123qqq...A
+mysql> 
+mysql> show  variables like  "binlog_format";
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| binlog_format | MIXED |
++---------------+-------+
+1 row in set (0.00 sec)
+
+mysql> reset master;
+mysql> show  master status;
+
+
+		5、查看日志内容		
+  108  mysqlbinlog /var/lib/mysql/host50-bin.000001 | grep -i create
+  109  mysqlbinlog /var/lib/mysql/host50-bin.000001 | grep -i insert
+  110  mysqlbinlog /var/lib/mysql/host50-bin.000001 | grep -i select
+  111  mysqlbinlog /var/lib/mysql/host50-bin.000001 | grep -i update
+  112  mysqlbinlog /var/lib/mysql/host50-bin.000001 | grep -i delete
+  113  mysqlbinlog /var/lib/mysql/host50-bin.000001 | grep -i desc
+
+	3.2 修改日志文件的存储位置及文件命令 练习时间6分钟到 09：14
+  115  mkdir /mylog
+  116  chown  mysql /mylog
+  117  ls -ld /mylog/
+
+  118  vim /etc/my.cnf
+	  [mysqld]
+		binlog_format="mixed"
+		server_id=50
+		log-bin=/mylog/db50
+	:wq
+
+  119  systemctl  restart mysqld
+  120  ls /mylog/db50.*
+[root@host50 ~]# mysql -uroot  -p123qqq...A
+mysql> show  master status;
+mysql> select count(*) from db3.user;
+mysql>exit
+
+]# mysqldump  -uroot  -p123qqq...A  db3  > /dbbak/db3.sql
+]# scp /dbbak/db3.sql  root@192.168.4.51:/root/
+
+192.168.4.51:
+	 ]# mysql  -uroot  -p123qqq...A
+	 mysql> show databases;
+	 mysql> create database db3; (没有库时创建)
+	 mysql> exit;
+	 ]# mysql  -uroot  -p123qqq...A  db3 < /root/db3.sql
+	 ]# mysql  -uroot  -p123qqq...A
+	 mysql> select count(*) from db3.user;
+
+192.168.4.50:
+	]# mysql  -uroot  -p123qqq...A
+	mysql> show  master status;
+insert into db3.user(name,uid)values("dc",201)
+insert into db3.user(name,uid)values("dc2",201)
+insert into db3.user(name,uid)values("dc3",201)
+insert into db3.user(name,uid)values("dc4",201)
+insert into db3.user(name,uid)values("dc5",201)
+	mysql> show master status;
+	mysql> select count(*) from db3.user;
+
+		3.3 日志文件如何区分记录的多条SQL命令
+			偏移量
+			时间点
+[root@host50 ~]# scp  /mylog/db50.000001   root@192.168.4.51:/root/
+
+	3.2 使用binlog日志恢复数据
+	     命令格式
+	     ]# mysqlbinlog  日志文件名   | mysql -uroot -p密码
+	     ]# mysqlbinlog 选项  日志文件名 | mysql -uroot -p密码
+		选项 
+		--start-position=数字 --stop-position=数字 
+--start-datetime=“yyyy-mm-dd hh:mm:ss” --stop-datetime="yyyy-mm-dd hh:mm:ss"
+[root@mysql51 ~]# mysqlbinlog  /root/db50.000001 | mysql -uroot -p123qqq...A
+
+[root@mysql51 ~]# mysql -uroot -p123qqq...A
+mysql> select  count(*) from  db3.user;
+mysql> select name from db3.user where name like  'dc%";
+
+		休息到10：15；
+192.168.4.50:
+mysql> show master status;
+mysql> insert into db3.user(name,uid)values("aa",301);
+mysql> insert into db3.user(name,uid)values("aaa",301);
+mysql> insert into db3.user(name,uid)values("aaaa",301);
+mysql> insert into db3.user(name,uid)values("aaaaa",301);
+mysql> insert into db3.user(name,uid)values("aaaaaa",301);
+mysql> delete  from  db3.user where  name regexp '^aa.*';
+mysql> show master status;
+
+[root@host50 ~]# scp /mylog/db50.000001  root@192.168.4.51:/tmp/
+
+
+192.168.4.51:
+[root@mysql51 ~]# mysqlbinlog --start-position=2232 --stop-position=3656  /tmp/db50.000001  |  mysql -uroot  -p123qqq...A
+
+]# mysql -uroot  -p123qqq...A
+mysql> select name from  db3.user where name  regexp   '^aa.*';
+
+		练习到 10：46 
+
+192.168.4.50：
+[root@mysql50 ~]# mysqlbinlog --start-position=2232 --stop-position=3656  /tmp/db50.000001  |  mysql -uroot  -p123qqq...A
+
+]# mysql -uroot  -p123qqq...A
+mysql> select name  from  db3.user where name  regexp   '^aa.*';
+
++++++RDBMS1_DAY05 -----数据备份与恢复（percona）
+1.percona软件介绍
+
+2 在192.168.4.50 主机安装percona软件
+
+]# scp /linux-soft/03/mysql/libev-4.15-1.el6.rf.x86_64.rpm \
+> root@192.168.4.50:/root/
+
+]# scp /linux-soft/03/mysql/percona-xtrabackup-24-2.4.7-1.el7.x86_64.rpm  root@192.168.4.50:/root/
+
+]# rpm -ivh libev-4.15-1.el6.rf.x86_64.rpm 
+]# yum -y  install percona-xtrabackup-24-2.4.7-1.el7.x86_64.rpm 
+]# rpm -qa  | grep  -i percona
+]# rpm -ql percona-xtrabackup-24
+]# innobackupex --help
+]# man innobackupex
+
+3 使用innobackupex 对数做备份和恢复
+	3.1 命令格式
+			]# innobackupex  <选项>
+	3.2 常用选项
+		--user  --password  --no-timestamp --apply-log 
+		--copy-back 
+
+	3.3 完全备份与恢复
+50 ]#innobackupex  --user root --password 123qqq...A   /allbak --no-timestamp
+50 ]# ls  /allbak
+50 ]# scp -r  /allbak  root@192.168.4.51:/root/
+
+
+51 ]# rpm -ivh libev-4.15-1.el6.rf.x86_64.rpm 
+51 ]# yum -y  install percona-xtrabackup-24-2.4.7-1.el7.x86_64.rpm 
+
+[root@host51 ~]# systemctl  stop mysqld
+[root@host51 ~]# rm -rf /var/lib/mysql/*
+[root@host51 ~]# ls /var/lib/mysql
+
+
+[root@host51 ~]# innobackupex  --apply-log  /root/allbak/
+]# cat /root/allbak/xtrabackup_checkpoints 
+]# innobackupex  --copy-back  /root/allbak/
+]# ls /var/lib/mysql -l
+]# chown  -R mysql:mysql /var/lib/mysql
+
+]# systemctl  start mysqld
+]# mysql -uroot -p123qqq...A
+mysql> show databases ;  select  * from db5.a ; select  * from db5.b;
+
+		时间10分钟 到 15：40 
+
+	3.2 恢复完全备份中的单张表
+
+50]# mysql  -uroot  -p123qqq...A
+mysql> use db5;
+mysql> show tables;
+mysql> select  * from a;
+mysql> select  * from b;
+mysql> delete from b;
+mysql> select  * from b; select  * from a;
+mysql> show  tables;
+
+	使用备份文件恢复b表的数据
+
+mysql> alter  table db5.b discard  tablespace; 		
+mysql> system ls /var/lib/mysql/db5/b.*
+mysql> desc b;
+mysql> select  * from  b;
+
+
+]# innobackupex --apply-log --export  /allbak
+]# ls /allbak/db5/
+
+
+]# cp /allbak/db5/b.{cfg,exp,ibd} /var/lib/mysql/db5/
+]# chown mysql:mysql /var/lib/mysql/db5/b.*
+]# ls -l /var/lib/mysql/db5/b.*
+
+mysql>  alter  table  db5.b  import  tablespace;
+
+mysql> system rm -rf  /var/lib/mysql/db5/b.cfg 
+mysql> system rm -rf  /var/lib/mysql/db5/b.exp
+
+mysql> system ls /var/lib/mysql/db5/b.*
+/var/lib/mysql/db5/b.frm  /var/lib/mysql/db5/b.ibd
+mysql> 
+mysql> desc db5.b;
+mysql> select  * from  db5.b;
+
+	3.2 增量备份与恢复
+	
+	增量备份:备份上次备份后，所有新产生的数据。
+		
+	首备份数据（完全备份）
+[root@host50 ~]# innobackupex --user root --password 123qqq...A  /datafull --no-timestamp
+
+[root@host50 ~]# ls /datafull
+[root@host50 ~]# cat /datafull/xtrabackup_checkpoints
+	第2次备份  （增量备份）
+		select  count(*) from db5.a;
+		insert into db5.a values(999);//插入多条
+		select  count(*) from db5.a;
+[root@host50 ~]# innobackupex --user root --password 123qqq...A \
+   --incremental /new2dir  --incremental-basedir=/datafull --no-timestamp
+
+[root@host50 ~]# ls /new2dir
+[root@host50 ~]# cat /new2dir/xtrabackup_checkpoints
+	第3次备份  （增量备份）  
+			mysql> select count(*) from db5.a;
+			insert into db5.a values(7777);//插入多条	
+			mysql> select count(*) from db5.a;
+
+[root@host50 ~]# innobackupex --user root --password 123qqq...A \
+--incremental /new3dir  --incremental-basedir=/new2dir --no-timestamp
+
+[root@host50 ~]# ls /new3dir	
+[root@host50 ~]# cat /new3dir/xtrabackup_checkpoints
+		5分钟 到16:57
+
+[root@host50 ~]# scp -r /datafull  root@192.168.4.51:/root/
+[root@host50 ~]# scp -r /new2dir/  root@192.168.4.51:/root
+[root@host50 ~]# scp -r /new3dir/  root@192.168.4.51:/root/
+
+	在192.168.4.51 恢复数据
+		步骤如下：
+	清空数据库目录
+[root@host51 ~]# systemctl  stop  mysqld
+[root@host51 ~]# rm  -rf /var/lib/mysql/*
+[root@host51 ~]# ls /var/lib/mysql/
+
+	准备恢复数据
+[root@host51 ~]# innobackupex  --apply-log  --redo-only  /root/datafull
+
+	合并数据
+[root@host51 ~]# innobackupex  --apply-log  --redo-only  /root/datafull \
+--incremental-dir=/root/new2dir
+
+[root@host51 ~]# innobackupex  --apply-log  --redo-only  /root/datafull \
+--incremental-dir=/root/new3dir
+
+	拷贝数据
+
+[root@host51 ~]# innobackupex  --copy-back /root/datafull/
+[root@host51 ~]# chown  -R  mysql:mysql  /var/lib/mysql
+       启动服务
+[root@host51 ~]# systemctl  start mysqld
+[root@host51 ~]# 
+[root@host51 ~]# mysql -uroot -p123qqq...A
+mysql> show  databases;
+
+
+[root@host51 ~]# rm  -rf  /root/new2dir/
+[root@host51 ~]# rm  -rf  /root/new3dir/
+
+
 

@@ -166,9 +166,33 @@ count(*) count(id) count(1)的区别
 |NULL |NULL|
 +------ +------+
 count(*)=3 count(id)=1 count(1)=3
+执行效果上：  
+count(*)包括了所有的列，相当于行数，在统计结果的时候，不会忽略列值为NULL  
+count(1)包括了所有列，用1代表代码行，在统计结果的时候，不会忽略列值为NULL  
+count(列名)只包括列名那一列，在统计结果的时候，会忽略列值为空（这里的空不是只空字符串或者0，而是表示null）的计数，即某个字段值为NULL时，不统计  
 
-完全备
-差异备
-增量备
-差异备
-增量备
+执行效率上：  
+列名为主键，count(列名)会比count(1)快  
+列名不为主键，count(1)会比count(列名)快  
+如果表多个列并且没有主键，则 count（1） 的执行效率优于 count（*）  
+如果有主键，则 select count（主键）的执行效率是最优的  
+如果表只有一个字段，则 select count（*）最优
+
+
+当表的数据量大些时，对表作分析之后，使用count(1)还要比使用count(*)用时多了！ 
+执行计划上:
+count(1)和count(*)的效果是一样的。 但是在表做过分析之后，count(1)会比count(*)的用时少些（1w以内数据量），不过差不了多少。  如果count(1)是聚索引,id,那肯定是count(1)快。但是差的很小的。 因为count(*),自动会优化指定到那一个字段。所以没必要去count(1)，用count(*),sql会帮你完成优化的
+
+因此：count(1)和count(*)基本上是没有差别！ sql调优功能
+
+0 3 1 * * /root/dballbak  (完全备份)
+0  3 2-31 * * /root/dbnewdata (增量备份)
+
+[maxscale]
+threads=1      #线程数,默认为1,可设置为 auto ,根据内核数开启线程数
+
+[MaxAdmin Service]   #管理服务
+ 76 type=service
+ 77 router=cli
+
+
