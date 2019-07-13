@@ -1,12 +1,12 @@
-﻿#!/bin/bash
+#!/bin/bash
 数据库
 储存数据的仓库
 常见的数据库软件:
-Oracle  开源  跨平台  甲骨文(厂商)
-MySQL   开源  跨平台  甲骨文(厂商)
-SQL Server  不开源  不跨平台  微软
-DB2    不开源  不跨平台  IBM
-Redis  开源  跨平台   开源软件
+Oracle  开源  跨平台    甲骨文(厂商)
+MySQL    开源  跨平台    甲骨文(厂商)
+SQL     	  Server  不开源  不跨平台  微软
+DB2        不开源  跨平台  IBM
+Redis     开源  跨平台   开源软件
 Memcache  开源  跨平台   开源软件
 MongoDB   开源  跨平台   开源软件
 
@@ -257,7 +257,7 @@ alter table 库.表 rename(修改表名)...;
 2.unique		唯一索引
 3.fulltext		全文索引
 4.primary key  	主键
-5.foreign 可以  	外键
+5.foreign key  	外键
 	        
 索引优点:
 	通过常见唯一性索引,可以保证数据库中的每一行数据的唯一行
@@ -433,8 +433,8 @@ secure_file_priv  mysqld 用这个配置项来完成对数据导入导出的限�
 		字符比较: 
 	=(相等)               如:name="root"
 	!=(不相等)            如:name!="root"
-	ls null(值为空)       如:shell ls null
-	ls not null(值非空)   如:shell ls not null
+	is null(值为空)       如:shell is null
+	is not null(值非空)   如:shell is not null
 insert into  db3.user(name) values(null)(空),(NULL)(空),("")(非空),("null")(非空);
 
 	逻辑匹配(多个判断条件)
@@ -966,6 +966,8 @@ XtraBackup工具
 	*.ibd : 表空间文件,存放表数据文件
 	*.frm : 存放表结构的文件
 	*.cfg和*.exp :　表信息	
+	*.MYD--"D"数据信息文件
+	*.MYI--"I"索引信息文件
 
 	delete from db5.b;
 	#删除报表里的所有数据,表结构和表还在
@@ -1088,6 +1090,737 @@ RDBMS1知识总结
 	物理备份:cp tar innobackupex 
 	逻辑备份:mysqldump binlog
  
+########################################################################################
+day6
+########################################################################################
+replay-log: 中继日志
+一 MySQL主从同步
+	
+		 主从原理如下：
+1.
+主服务器将更新写入二进制日志文件，并维护文件的一个索引以跟踪日志循环。这些日志可以记录发送到从服务器的更新。当一个从服务器连接主服务器时，它通知 主服务器从服务器在日志中读取的最后一次成功更新的位置。从服务器接收从那时起发生的任何更新，然后封锁并等待主服务器通知新的更新。
+
+    MySQL复制基于主服务器在二进制日志中跟踪所有对数据库的更改(更新、删除等等)。因此，要进行复制，必须在主服务器上启用二进制日志。
+
+    每个从服务器从主服务器接收主服务器已经记录到其二进制日志的保存的更新，以便从服务器可以对其数据拷贝执行相同的更新。
+
+    从服务器设置为复制主服务器的数据后，它连接主服务器并等待更新过程。如果主服务器失败，或者从服务器失去与主服务器之间的连接，从服务器保持定期尝试连 接，直到它能够继续帧听更新。由--master-connect-retry选项控制重试间隔。 默认为60秒。
+
+    每个从服务器跟踪复制时间。主服务器不知道有多少个从服务器或在某一时刻有哪些被更新了。
+
+2.主从同步过程的相关文件
+
+    默认情况，中继日志使用host_name-relay-bin.nnnnnn形式的文件名，其中host_name是从服务器主机名，nnnnnn是序 列号。用连续序列号来创建连续中继日志文件，从000001开始。从服务器跟踪索引文件中目前正使用的中继日志。 默认中继日志索引文件名为host_name-relay-bin.index。默认情况，在从服务器的数据目录中创建这些文件。可以用--relay- log和--relay-log-index服务器选项覆盖 默认文件名
+
+    中继日志与二进制日志的格式相同，并且可以用mysqlbinlog读取。SQL线程执行完中继日志中的所有事件并且不再需要之后，立即自动删除它。没有 直接的删除中继日志的机制，因为SQL线程可以负责完成。然而，FLUSH LOGS可以循环中继日志，当SQL线程删除日志时会有影响。
+
+    从属复制服务器在数据目录中另外创建两个小文件。这些状态文件默认名为主master.info和relay-log.info。它们包含SHOW SLAVE STATUS语句的输出所显示的信息(关于该语句的描述参见13.6.2节，“用于控制从服务器的SQL语句”)。状态文件保存在硬盘上，从服务器关闭时 不会丢失。下次从服务器启动时，读取这些文件以确定它已经从主服务器读取了多少二进制日志，以及处理自己的中继日志的程度。
+
+	
+		1.1 相关概念
+	MySQL主从同步
+	主服务器(master): 接受客户端访问链接
+	从服务区(slave): 自动同步主服务器数据	
+	
+	主从同步原理:
+	主服务器(Master):
+	启动binlog日志
+	
+	从服务器(Slave):
+	Slave_IO : 复制master主机 binlog日志文件里的SQL命令到本机的relay-log文件里
+	Slave_SQL :执行本机relay-log文件里的SQL语句,实现与Master数据一致
+
+	构建思路:
+		配置主库:
+	启用binlog日志,授权用户,查看binlog日志信息
+	
+		配置从服务器:
+	确保与主服务器数据一致
+	设置server_id, 指定主库信息,启动slave程序	
+
+		1.2 部署mysql主动同步,配置步骤如下
+	配置主服务器192.168.4.51
+	51]# vim /etc/my.cnf
+	[mysqld]
+	server_id=51
+	log-bin=master51
+	:wq
+	51]# systemctl restart mysqld
+	51]# ls /var/lib/mysql/master51*
+	grant replication slave on *.* to repluser@"%" identified by "123456";
+	#在主数据库服务器为从服务器添加一个拥有权限访问主库的用户repluser 密码是123456
+	#可在从服务器上用mysql -h127.0.0.1 -utest -ptest; 来测试是否有权限访问主数据库
+	#REPLICATION SLAVE 常用于建立复制时所需要用到的用户权限，也就是slave server必须被master server授权具有该权限的用户，才能通过该用户复制
+	show master  status;
+	
+	51]# mysqldump -uroot  -p123456 --master-data db5 > /root/db5.sql
+	#主库备份数据,--master-data记录当前备份数据对应的日志信息(日志名称和偏移量)
+	51]# scp db5.sql root@192.168.4.52:~
+
+		1.2.2 配置从服务器192.168.4.52
+		指定server_id 	//指定id值(1-255)不可与主服务器重复
+	52]# vim /etc/my.cnf	
+	[mysqld]
+	server_id=52
+	:wq
+	52]# systemctl restart mysqld
+	52]# mysql -uroot -p123456 -e "create database db5;"
+	52]# mysql -uroot  -p123456 db5 < db5.sql
+	52]# mysql -uroot -p123456 -e "select * from db5.a"
+	52]# mysql -uroot -p123456 -e "select * from db5.b"
+	
+		1.2.3指定服务器主库信息
+	52]# grep master51 /root/db5.sql 
+	CHANGE MASTER TO MASTER_LOG_FILE='master51.000001', MASTER_LOG_POS=441;
+	#查看日志文件名称与偏移量
+	
+	52]# mysql -uroot –p 111111;			
+	mysql> show slave status; 			
+	Empty set (0.00 sec)
+	#查看状态信息,还不是从服务器
+	change master to 					//指定主服务器
+	-> master_host=“192.168.4.51”,			//主服务器 ip 地址
+	-> master_user=“repluser”,			//主服务器授权用户
+	-> master_password=“123456”,		//主服务器授权用户密码
+	-> master_log_file=“master51.000001”,	//主服务器日志文件
+	-> master_log_pos=441;				//主服务器日志偏移量
+
+	start slave;
+	#启动slave进程
+	
+	#1.master信息会自动保存到/var/lib/mysql/master.info 文件
+    	#2.若更改主库信息时，应先执行stop slave； 修改后 再执行 start slave；
+
+	show slave status\G;
+	#查看状态信息 确认IO线程  SQL线程都是 yes 状态
+"	Slave_IO_State:Waiting for master to send event                             "
+	Master_Host: 192.168.4.51 			//主服务器 ip 地址
+	Master_User: repluser                       //主服务器授权用户名
+	Slave_IO_Running: Yes				//IO 线程 yes 状态
+	Slave_SQL_Running: Yes				//SQL 线程 yes 状态
+
+	52]# ls /var/lib/mysql
+	
+###########################################################################
+	相关文件:
+	存放在数据库目录下
+	master.info			#主库信息
+	relay-log.into		#中继日志信息
+	主机名-relay-bin.xxxxxx	#中继日志
+	主机名-relay-bin.index 	#索引文件
+#########################################################################	
+	
+	###出错了最终解决方法:(实在排不出的情况下)
+	把从服务器恢复为独立的数据库服务
+	52]# cd /var/lib/mysql
+	52]# rm -rf  *.relay-bin*  master.info  relay-log.info
+	52]# systemctl restart mysqld
+	
+	show master status;
+	
+	重新配置从服务器
+	change master to 					//指定主服务器
+	-> master_host=“192.168.4.51”,			//主服务器 ip 地址
+	-> master_user=“repluser”,			//主服务器授权用户
+	-> master_password=“123456”,		//主服务器授权用户密码
+	-> master_log_file=“master51.000001”,	//主服务器日志文件
+	-> master_log_pos=441;				//主服务器日志偏移量
+	
+	start slave;
+	show slave status/G;
+
+		1.3 测试主从同步配置
+	grant all on db5.* to yaya99@"%" identified by  "123456";
+	#在主数据库服务器为客户端添加一个连接用户yaya99密码是123456
+		
+	在客户端192.168.4.50主机上,连接主服务器访问数据
+	写入数据测试  查看主从服务器数据是否同步
+	50]# mysql -h192.168.4.51 -yaya99 -p123456
+	insert into db5.a values(999);
+	
+	#检查数据是否同步
+	51]# mysql -u root -p123456
+	select * from db5.a;
+	52]# mysql -u root -p123456
+	select * from db5.a;
+
+
+二 主从同步模式
+	2.1 主从同步结构
+	单项复制: 一主　<---- 从
+	一主多从: 从 <---- 主 ----> 从
+	链式复制: 主 <---- 从 <---- 从
+	互为主从: 主 <----> 主
+
+
+	2.2 配置一主多从结构(把192.168.4.53服务器也做为192.168.4.51主服务器的从服务器)
+	51]# mysqldump -uroot  -p123456 --master-data db5 > /root/db5.sql
+	#主库备份数据,--master-data记录当前备份数据对应的日志信息(日志名称和偏移量)
+	51]# scp db5.sql root@192.168.4.53:~
+	#确保与主服务器数据一致,在主服务器 51 备份所有数据 并把备份文件拷贝给 53 服务器。
+
+	指定server_id 	//指定id值(1-255)不可与主服务器重复
+	53]# vim /etc/my.cnf	
+	[mysqld]
+	server_id=52
+	:wq
+	53]# systemctl restart mysqld
+	53]# mysql -uroot -p123456 -e "create database db5;"
+	53]# mysql -uroot  -p123456 db5 < db5.sql
+	53]# mysql -uroot -p123456 -e "select * from db5.a"
+	53]# mysql -uroot -p123456 -e "select * from db5.b"
+		
+	指定服务器主库信息
+	53]# grep master51 /root/db5.sql 
+	CHANGE MASTER TO MASTER_LOG_FILE='master51.000001', MASTER_LOG_POS=441;
+	#查看备份文件记录日志名称与偏移量
+	
+	53]# mysql -uroot –p 111111;			
+	mysql> show slave status; 			
+	Empty set (0.00 sec)
+	#查看状态信息,还不是从服务器
+	change master to 					//指定主服务器
+	-> master_host=“192.168.4.51”,			//主服务器 ip 地址
+	-> master_user=“repluser”,			//主服务器授权用户
+	-> master_password=“123456”,		//主服务器授权用户密码
+	-> master_log_file=“master51.000001”,	//主服务器日志文件
+	-> master_log_pos=441;				//主服务器日志偏移量
+
+	start slave;
+	#启动slave进程
+	
+	#1.master信息会自动保存到/var/lib/mysql/master.info 文件
+    	#2.若更改主库信息时，应先执行stop slave； 修改后 再执行 start slave；
+
+	show slave status\G;
+	#查看状态信息 确认IO线程  SQL线程都是 yes 状态
+"	Slave_IO_State:Waiting for master to send event                             "
+	Master_Host: 192.168.4.51 			//主服务器 ip 地址
+	Master_User: repluser                       //主服务器授权用户名
+	Slave_IO_Running: Yes				//IO 线程 yes 状态
+	Slave_SQL_Running: Yes				//SQL 线程 yes 状态
+
+	在客户端192.168.4.50主机上,连接主服务器访问数据
+	写入数据测试  查看主从服务器数据是否同步
+	50]# mysql -h192.168.4.51 -yaya99 -p123456
+	insert into db5.a values(333);
+
+	#检查数据是否同步
+	51]# mysql -u root -p123456
+	select * from db5.a;
+	53]# mysql -u root -p123456
+	select * from db5.a;
+	
+	
+		2.3 配置主从从结构
+		192.168.4.53
+  	]# systemctl  stop mysqld
+  	]# cd /var/lib/mysql
+  	]# rm -rf master.info 
+  	]# rm -rf relay-log.info 
+  	]#  rm -rf  *-relay-bin*
+  	]# vim /etc/my.cnf
+	#server_id
+       :wq
+
+  	]# systemctl  start mysqld
+            mysql -uroot -p123qqq...A
+            mysql> drop database db5;
+	    mysql> exit ;
+
+	   配置主服务器53             
+	]# vim /etc/my.cnf
+	[mysqld]
+	server_id=53
+	log-bin=db53
+	:wq
+	]# systemctl restart  mysqld
+	]# ls /var/lib/mysql/db53*
+
+	]# mysql -uroot -p123qqq...A
+	mysql> grant replication slave  on  *.*  to repluser@"%" identified by "123qqq...A";
+
+	mysql> show master status;
++-------------+----------+--------------+------------------+-------------------+
+| File        | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
++-------------+----------+--------------+------------------+-------------------+
+| db53.000001 |      441 |              |                  |                   |
++-------------+----------+--------------+------------------+-------------------+
+1 row in set (0.00 sec)
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.00 sec)
+		
+		配置从服务器54
+	]# vim /etc/my.cnf
+	[mysqld]
+	server_id=54
+	log-bin=db54
+	log_slave_updates
+	:wq
+	]# systemctl  restart mysqld
+
+	[root@host54 ~]# ls /var/lib/mysql/db54*
+	/var/lib/mysql/db54.000001  /var/lib/mysql/db54.index
+
+	[root@host54 ~]# mysql -uroot -p123qqq...A
+	 
+	mysql> grant replication slave  on  *.*  to  repluser@"%" identified by "123qqq...A";
+
+	mysql> show master status;
++-------------+----------+--------------+------------------+-------------------+
+| File        | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
++-------------+----------+--------------+------------------+-------------------+
+| db54.000001 |      441 |              |                  |                   |
++-------------+----------+--------------+------------------+-------------------+
+			
+
+	mysql>  change master to  master_host="192.168.4.53" , 
+              master_user="repluser" , master_password="123qqq...A" , 
+		  master_log_file="db53.000001" , master_log_pos=441 ;
+
+		mysql> start slave;
+		mysql> show slave status\G;
+			 Master_Host: 192.168.4.53
+ 			Slave_IO_Running: Yes
+                	Slave_SQL_Running: Yes
+
+	配置从服务器55
+	]# vim /etc/my.cnf
+	mysqld]
+	server_id=55
+	:wq
+	]# systemctl restart mysqld
+
+	]# mysql -uroot -p123qqq...A
+	mysql> change master to  master_host="192.168.4.54" ,master_user="repluser" ,
+     master_password="123qqq...A" , master_log_file="db54.000001" , 
+    master_log_pos=441;
+
+	mysql> start slave;
+	Query OK, 0 rows affected (0.00 sec)
+
+	mysql> 
+	mysql> exit
+	Bye
+	[root@host55 ~]# mysql -uroot -p123qqq...A -e  "show slave status\G" | grep 192.168.4.54
+	mysql: [Warning] Using a password on the command line interface can be insecure.
+                  Master_Host: 192.168.4.54
+	[root@host55 ~]# 
+	[root@host55 ~]# mysql -uroot -p123qqq...A -e  "show slave status\G" | grep -i yes
+	mysql: [Warning] Using a password on the command line interface can be insecure.
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+[
+		测试配置
+			在主服务器53 本机创建新库 、 表  、记录
+	[root@host53 mysql]# mysql -uroot -p123qqq...A -e "create database db6"
+	[root@host53 mysql]# mysql -uroot -p123qqq...A -e "create table db6.a(id int)"
+	[root@host53 mysql]# mysql -uroot -p123qqq...A -e "insert into db6.a values (99)"
+	[root@host53 mysql]# mysql -uroot -p123qqq...A -e "select  * from db6.a"
+	
+
+			在从服务器54 和 55 主机可以查看到同样的数据。
+	[root@host54 mysql]# mysql -uroot -p123qqq...A -e "select  * from db6.a"
+
+	[root@host54 mysql]# mysql -uroot -p123qqq...A -e "select  * from db6.a"
+	
+	[root@host54 mysql]# mysql -uroot -p123qqq...A -e "select  * from db6.a"
+
+	2.4 主从同步复制模式
+		2.4.1 主从同步复制模式介绍
+	复制模式介绍
+	异步负责
+	-主库执行完一次事务后，立即将结果返回给客户端，并不关心从库是否已经接收或处理
+
+	全同步复制
+	-当主库执行完一次事务，且所有从库都执行了该事务后才将结果返回给客户端
+
+	半同步复制
+	-介于异步复制和全同步复制之间
+	-主库在执行完一次事务后，等待至少一个从库接收到并写道relay log中才将结果返回给客户端
+		
+	
+			1 异步复制模式 （默认）
+			2 全同步复制模式
+			3 半同步复制模式
+
+		2.4.2 配置半同步复制模式
+			命令行配置立即生效
+
+	1 查看是否允许动态加载模块(默认允许)
+	mysql> show  variables  like  'have_dynamic_loading';
++----------------------+-------+
+| Variable_name        | Value |
++----------------------+-------+
+| have_dynamic_loading | YES   |
++----------------------+-------+
+	
+	2 安装模块
+	mysql>  install  plugin  rpl_semi_sync_master   SONAME   "semisync_master.so";   //加载 master 模块
+	#rpl_semi_sync_master模块类型为master  SONAME"模块名称"
+	mysql>  install  plugin  rpl_semi_sync_slave    SONAME   "semisync_slave.so";	//加载slave 模块
+	#rpl_semi_sync_master模块类型为slave  SONAME"模块名称"	
+
+	3 查看模块安装状态  
+ 	mysql> select  PLUGIN_NAME , PLUGIN_STATUS from  information_schema.plugins 
+        	where PLUGIN_NAME  like '%semi%'; 
++----------------------+---------------+
+| PLUGIN_NAME          | PLUGIN_STATUS |
++----------------------+---------------+
+| rpl_semi_sync_master | ACTIVE        |	//模块安装成功
+| rpl_semi_sync_slave  | ACTIVE        |
++----------------------+---------------+
+
+	4 启用模块
+	mysql> set  global rpl_semi_sync_master_enabled=1;	//启用 master 半同步复制
+	mysql> set  global rpl_semi_sync_slave_enabled=1;  	//启用 slave 半同步复制
+
+
+	5 查看模块启用状态
+	mysql> show  variables  like  "rpl_semi_sync_%_enabled";
++------------------------------+-------+
+| Variable_name                | Value |
++------------------------------+-------+
+| rpl_semi_sync_master_enabled | ON    |
+| rpl_semi_sync_slave_enabled  | ON    |
++------------------------------+-------+
+
+			永久配置vim /etc/my.cnf
+		]# vim /etc/my.cnf
+			[mysqld]
+	plugin-load="rpl_semi_sync_master=semisync_master.so;rpl_semi_sync_slave=semisync_slave.so"
+
+	rpl_semi_sync_master_enabled=1
+ 	rpl_semi_sync_slave_enabled=1
+	:wq
+	]# systemctl restart mysqld
+	     
+	[root@host54 ~]# mysql -uroot  -p123qqq...A
+ 
+	mysql>  select  PLUGIN_NAME , PLUGIN_STATUS from  information_schema.plugins
+   		 ->  where PLUGIN_NAME  like '%semi%';
++----------------------+---------------+
+| PLUGIN_NAME          | PLUGIN_STATUS |
++----------------------+---------------+
+| rpl_semi_sync_master | ACTIVE        | 	//模块已加载
+| rpl_semi_sync_slave  | ACTIVE        |
++----------------------+---------------+
+
+
+	mysql> show  variables  like  "rpl_semi_sync_%_enabled";
++------------------------------+-------+
+| Variable_name                | Value |
++------------------------------+-------+
+| rpl_semi_sync_master_enabled | ON    | 	//模式已启用
+| rpl_semi_sync_slave_enabled  | ON    |
++------------------------------+-------+
+
+
+#################################################################################################
+day7
+#################################################################################################
+MySQL读写分离
+
+	常用的mysql读写分离代理服务器:(也叫mysql中间件)
+	1. mycat   2. mysqlproxy  3. maxscale
+
+	读写分离的原理
+	有MySQL代理面向客户端提供服务
+		收到SQL写请求时,交给master服务器处理
+		收到SQL读请求时,交给slave服务器处理
+	
+	构建思路:
+	1.部署MySQL一主一从结构
+	主服务器: 192.168.4.51
+	从服务器: 192.168.4.52
+	
+	2.部署MySQL代理服务器(中间件)
+	装包  修改配置文件  启动服务
+
+	3.测试配置
+	客户端连接代理服务器访问数据      
+	
+一 部署maxscale服务
+	真机:
+	]$ scp /linux-soft/03/mysql/maxscale-2.1.2-1.rhel.7.x86_64.rpm   root@192.168.4.57:~
+	#或者在官网上下载
+	#下载链接地址: https://downloads.mariadb.com/file/MaxScale
+	
+	192.168.4.57主机
+	1.安装maxscale服务
+	yum -y install maxscale-2.1.2-1.rhel.7.x86_64.rpm
+	rpm -qa | grep -i maxscale
+
+	2.修改主配置文件(/etc/maxscale.conf)
+      ]# cp /etc/maxscale.cnf  /tmp
+	]# vim /etc/maxscale.cnf
+	[maxscale]
+	threads=auto
+
+	[server1]				#定义数据库服务器主机名
+	type=server				#类型
+	address=192.168.4.51		#master主机ip地址
+	port=3306				#端口
+	protocol=MySQLBackend		#协议
+
+	[server2]				#定义数据库服务器主机名
+	type=server				#类型
+	address=192.168.4.52		#slave主机ip地址
+	port=3306				#端口
+	protocol=MySQLBackend		#协议
+
+	[MySQL Monitor]			#定义要监控的数据库节点
+	type=monitor			#类型
+	module=mysqlmon			#模块
+	servers=server1,server2		#主 从数据库的主机名
+	user=maxscalemon			#监控用户名
+	passwd=123qqq...A			#密码
+	monitor_interval=10000
+
+	#[Read-Only Service]		#让代理服务器自动实现读写分离,不需要定义只读服务,整段注释
+	#type=service
+	#router=readconnroute
+	#servers=server1
+	#user=myuser
+	#passwd=mypwd
+	#router_options=slave
+
+	[Read-Write Service]		#定义读写分离的数据库节点
+	type=service			#类型
+	router=readwritesplit		#路由模块=读写分离模块
+	servers=server1,server2		#主 从数据库的主机名
+	user=maxscaleroute 	      #验证客户端访问时使用的用户在后端服务器上是否存在
+	passwd=123qqq...A			#路由用户名
+	max_slave_connections=100%     #密码
+
+	[MaxAdmin Service]             #定义管理服务
+	type=service
+	router=cli
+
+	#[Read-Only Listener]		#让代理服务器自动实现读写分离,不需要定义只读服务,整段注释
+	#type=listener			#不定义只读服务使用的端口号
+	#service=Read-Only Service
+	#protocol=MySQLClient
+	#port=4008
+
+	[Read-Write Listener]		#定义读写侦听
+	type=listener			#类型
+	service=Read-Write Service	#服务
+	protocol=MySQLClient		#协议
+	port=4006				#读写分离服务器使用的端口
+
+	[MaxAdmin Listener]		#定义管理侦听
+	type=listener			#类型
+	service=MaxAdmin Service		#服务
+	protocol=maxscaled		#协议
+	socket=default			#编程接口(API)
+	port=4016				#管理服务使用的端口号
+	:wq
+	]# sed -i '/#/d' /etc/maxscale.cnf
+	#删除注释的开头的行(为了好看)
+
+	配置 主 数据库服务器:
+	在主服务器上授权添加用户
+	添加 授权 监控用户maxscalemon
+	添加 授权 路由用户maxscaleroute
+	grant replication slave, replication client on *.* to maxscalemon@"%"  identified by '123qqq...A';
+	#创建监控用户
+	#授予复制账号REPLICATION CLIENT权限，复制用户可以使用 SHOW MASTER STATUS, SHOW SLAVE STATUS和 SHOW BINARY LOGS来确定复制状态。
+
+	#授予复制账号REPLICATION SLAVE权限，复制才能真正地工作。
+	grant select on mysql.* to maxscaleroute@"%" identified by "123qqq...A";
+	#创建路由用户
+
+	在代理服务器上:
+	]# maxscale -f /etc/maxscale.cnf
+	#启动maxscale服务
+	]# netstat -ntlup | grep maxscale
+	#查看maxscale服务端口和maxscale管理端口
+	]# kill -9 19081
+	]# killall -9 maxscale
+	#停止服务
+	]# tailf  /var/log/maxscale/maxscale.log
+	#报错信息日志
+	
+	访问管理服务器查看监控信息
+	]# maxadmin -uadmin -pmariadb -P4016
+	#登录管理服务
+	MaxScale> list servers
+	#查看主 从数据库状态
+	
+	测试配置
+	1.在主服务器上添加访问数据库的连接用户
+	create database db7;
+	#创建测试库
+	grant all on db7.* to yaya66@"%" identified by "123qqq...A";
+	#添加用户对db7库有所有权限
+
+
+	2.在客户端连接读写分离服务器 访问数据
+	]# mysql -h192.168.4.57  -P4006 -uyaya66 -p123qqq...A
+	#用yaya66用户登录访问数据库
+	create table db7.a(id int);
+	insert into db7.a values(1);
+	然后去主数据库服务器和从数据库服务器上查询有没有记录
+	
+	
+二 mysql多实例
+	相关概念:
+	什么是多实例:
+	在一台物理主机上运行多个数据库服务
+	
+	为什么要使用实例:
+	节约运维成本
+	提高硬件利用率
+	
+	安装软件
+	真机
+	]$ scp /linux-soft/03/mysql/mysql-5.7.20-linux-glibc2.12-x86_64.tar.gz  root@192.168.4.57:~
+	
+	192.168.5.57主机	
+	]# tar -xf mysql-5.7.20-linux-glibc2.12-x86_64.tar.gz
+	]# mv mysql-5.7.20-linux-glibc2.12-x86_64 /usr/local/mysql
+	]# cd /usr/local/mysql/
+	]# ls
+
+	修改配置文件
+	]# mv /etc/my.cnf /root
+	]# vim /etc/my.cnf
+	[mysqld_multi]		#启用多实例
+	mysqld = /usr/local/mysql/bin/mysqld_safe		#指定进程文件路径
+	mysqladmin = /usr/local/mysql/bin/mysqladmin	#指定管理命令路径
+	user = root			#指定进程用户
+
+	[mysqld1]			#实例进程名称
+	port=3307			#端口号
+	datadir=/dir1		#数据库目录 ,要手动创建
+	socket=/dir1/mysqld1.sock	#指定 sock 文件的路径和名称 #本机访问自己的时候需要socket文件实现本机数据传递
+	pid-file=/dir1/mysqld1.pid	#进程 pid 号文件位置	
+	log-error=/dir1/mysqld1.err	#错误日志位置
+
+	[mysqld2]
+	datadir=/dir2
+	port=3308
+	log-error=/dir1/mysql2.log
+	pid-file=/dir1/mysql2.pid
+	socket=/dirmysql2.sock
+
+	............
+	:wq
+	
+	创建数据库目录
+	]# mkdir /dir1
+	]# mkdir /dir2
+	#数据库目录,创建的库和表文件都在这路径下	
+	
+	启动多实例服务
+	]# vim /etc/profile
+	export PATH=/usr/local/mysql/bin:$PATH
+	#修改PATH变量 设置命令路径
+	
+	启动服务:
+	]# /usr/local/mysql/bin/mysqld_multi start 1
+	]# /usr/local/mysql/bin/mysqld_multi start 2
+	
+	修改密码:
+	]# /usr/local/mysql/bin/mysql -u root  -p'mYgj*Cs9ZsZ(' -S /dir1/mysql1.sock 
+	alter user root@"localhost" identified by "123456";
+	]# usr/local/mysql/bin/mysql -u root  -p'hYbjsC89gsd(' -S /dir1/mysql2.sock 
+	alter user root@"localhost" identified by "123456";
+	
+	停止服务:
+	]# /usr/local/mysql/bin/mysqld_multi  --user=root --password="123456"  stop  1
+	]# /usr/local/mysql/bin/mysqld_multi  --user=root --password="123456"  stop  2
+	
+	启动多实例服务2的binlog日志:(和单台mysql服务器一样)
+	]# vim /etc/my.cnf
+	[mysqld2]
+	#skip-grant-tables
+	server_id=2
+	log-bin=mysql2
+	datadir=/dir2
+	port=3308	
+	log-error=/dir2/mysql2.log
+	pid-file=/dir2/mysql2.pid
+	socket=/dir2/mysql2.sock
+	:wq
+	]# ls /dir2/
+	#查看有没有binlog日志文件
+	show master status;
+	#查看正在使用的binlog日志文件
+	
+	假如忘记了或弄不见了初始化密码可以在配置文件/etc/my.cnf中添加
+	skip-grant-tables
+	重启服务
+	然后无密码进入mysql修改:
+	]# mysql -uroot -S /dir3/mysql3.sock
+	
+
+	
+	
+	
+
+	mysql和mysql多实例可以同时使用:
+	方法:
+	保留mysql原本的配置文件/etc/my.cnf,再添加mysql多实例的配置如下:
+	]# vim /etc/my.cnf
+	[mysqld]
+	validate_password_policy=0
+	validate_password_length=6
+	server_id=57
+	log-bin=db57
+	datadir=/var/lib/mysql
+	socket=/var/lib/mysql/mysql.sock
+	symbolic-links=0
+
+	log-error=/var/log/mysqld.log
+	pid-file=/var/run/mysqld/mysqld.pid
+
+
+	[mysqld_multi]
+	mysqld=/usr/local/mysql/bin/mysqld_safe
+	mysqladmin=/usr/local/mysql/bin/mysqladmin
+	user=root
+
+	[mysqld1]
+	datadir=/dir1
+	port=3307
+	log-error=/dir1/mysql1.log
+	pid-file=/dir1/mysql1.pid
+	socket=/dir1/mysql1.sock
+
+	[mysqld2]
+	#skip-grant-tables
+	server_id=2
+	log-bin=mysql2
+	datadir=/dir2
+	port=3308
+	log-error=/dir2/mysql2.log
+	pid-file=/dir2/mysql2.pid
+	socket=/dir2/mysql2.sock
+
+	[mysqld3]
+	#skip-grant-tables
+	datadir=/dir3
+	port=3309
+	log-error=/dir3/mysql.log
+	pid-file=/dir3/mysql3.pid
+	socket=/dir3/mysql3.sock
+	
+	
+	
+	
+	
+	
 
 
 
@@ -1101,16 +1834,7 @@ RDBMS1知识总结
 
 
 
-
-
-
-
-
-
-
-
-
-
+		
 
 
 
