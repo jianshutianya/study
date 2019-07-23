@@ -1,0 +1,12 @@
+#!/bin/bash
+file='/etc/redis/6379.conf'
+	/etc/init.d/redis_6379 stop
+	sed -i "70s/127.0.0.1/192.168.4.$i/" $file
+	sed -i "93s/6379/63$i/" $file
+	sed -i "815s/# *//" $file
+	sed -i "823s/# *//" $file
+	sed -i "829s/# *//" $file
+	sed -i "829s/1//" $file
+	rm -rf /var/lib/redis/6397/*
+	sed -i "43s/-p $REDISPORT/-h 192.168.4.$i -p 63$i/" $file
+	/etc/init.d/redis_6379 start

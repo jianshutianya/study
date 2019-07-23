@@ -1,0 +1,35 @@
+1.远程执行命令
+ssh root@192.168.4.50 "df -h"
+ssh root@192.168.4.50 "pwd;cat hello.txt"
+
+2.执行需要交互的命令
+添加 -t 参数后，ssh 会保持登录状态，直到你退出需要交互的命令
+ssh -t root@192.168.4.50 "top"
+
+3.执行多行的命令
+ssh root@192.168.4.50 "
+ls
+pwd
+echo 'haha'
+"
+
+4.命令中引用了变量
+name=nick
+ssh root@192.168.4.50 bash -c "'echo $name'"
+
+5.远程执行本地脚本
+vim test.sh
+echo haha
+ssh root@192.168.4.50 bash bash < test.sh
+为脚本传递参数
+vim test.sh
+echo haha
+echo $0
+echo $1
+ssh root@192.168.4.50 bash -s < test.sh helloword
+
+6.执行远程服务器上的脚本
+指定脚本的绝对路径！
+ssh root@192.168.4.50 "hello.txt"
+为脚本传递参数
+ssh root@192.168.4.50 hello.txt hi
