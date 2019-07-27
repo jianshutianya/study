@@ -1,0 +1,64 @@
+要开启php-fpm的状态页事实上非常easy在nginx的配置文件里增加：
+    location /status {
+            auth_basic "status page";
+            auth_basic_user_file /etc/nginx/login;
+            fastcgi_index  index.php;
+            fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+            include fastcgi_params;
+            fastcgi_pass 127.0.0.1:9000;
+        }
+    上面的auth_basic和auth_basic_user_file不是必须的，但这些都是敏感信息，一般不能让其他人看到，所以这里做了认证。在php-fpm.conf中打开：
+    pm.status_path = /status
+    
+    然后在浏览器中打开localhost/status就能够查看到当前的状态信息了
+    pool:                 www
+    process manager:      dynamic
+    start time:           17/Aug/2014:15:25:50 -0400
+    start since:          7702
+    accepted conn:        1486
+    listen queue:         0
+    max listen queue:     129
+    listen queue len:     128
+    idle processes:       9
+    active processes:     1
+    total processes:      10
+    max active processes: 20
+    max children reached: 2
+    slow requests:        0
+
+    以下介绍每一个參数的作用：
+    pool：php-fpm池的名称，一般都是应该是www
+    process manage：进程的管理方法，php-fpm支持三种管理方法，各自是static,dynamic和ondemand，普通情况下都是dynamic
+    start time：php-fpm启动时候的时间，无论是restart或者reload都会更新这里的时间
+    start since：php-fpm自启动起来经过的时间，默觉得秒
+    accepted conn：当前接收的连接数
+    listen queue：在队列中等待连接的请求个数，假设这个数字为非0，那么最好添加进程的fpm个数
+    max listen queue：从fpm启动以来，在队列中等待连接请求的最大值
+    listen queue len：等待连接的套接字队列大小
+    idle processes：空暇的进程个数
+    active processes：活动的进程个数
+    total processes：总共的进程个数
+    max active processes：从fpm启动以来，活动进程的最大个数，假设这个值小于当前的max_children，能够调小此值
+    max children reached：当pm尝试启动很多其它的进程，却由于max_children的限制，没有启动很多其它进程的次数。假设这个值非0，那么能够适当添加fpm的进程数
+    slow requests：慢请求的次数，一般假设这个值未非0，那么可能会有慢的php进程，一般一个不好的mysql查询是最大的祸首。
+
+    假设想看到更加具体的信息，能够使用localhost/status?full查看每一个子进程更加额外的信息，拿当中的一个子进程来说明：
+    pid:                  6917
+    state:                Idle
+    start time:           17/Aug/2014:15:27:46 -0400
+    start since:          8399
+    requests:             35
+    request duration:     69295
+    request method:       GET
+    request URI:          /member.php?mod=logging&action=login&infloat=yes&frommessage&inajax=1&ajaxtarget=messagelogin
+    content length:       0
+    user:                 -
+    script:               /usr/local/nginx/html/member.php
+    last request cpu:     72.16
+    last request memory:  3145728
+    
+    这里的都比較好理解，主要看下content length和user
+    content length：这里记录的是POST请求的内容长度.
+    user：假设设置了PHP_AUTH_USER就会显示对于的值，否则显示为0.
+    
+    这里须要注意的是假设state的状态为空暇的话，那么这些相关的信息将会以最后请求的服务相关，否则信息取决于当前请求的服务.

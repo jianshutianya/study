@@ -1,0 +1,84 @@
+# Server
+redis_version:2.8.8                     # Redis 的版本
+redis_git_sha1:00000000
+redis_git_dirty:0
+redis_build_id:bf5d1747be5380f
+redis_mode:standalone
+os:Linux 2.6.32-220.7.1.el6.x86_64 x86_64
+arch_bits:64
+multiplexing_api:epoll
+gcc_version:4.4.7                       #gcc版本
+process_id:49324                        # 当前 Redis 服务器进程id
+run_id:bbd7b17efcf108fdde285d8987e50392f6a38f48
+tcp_port:6379
+uptime_in_seconds:1739082               # 运行时间(秒)
+uptime_in_days:20                       # 运行时间(天)
+hz:10
+lru_clock:1734729
+config_file:/home/s/apps/RedisMulti_video_so/conf/zzz.conf
+ 
+# Clients
+connected_clients:1                     #连接的客户端数量
+client_longest_output_list:0
+client_biggest_input_buf:0
+blocked_clients:0
+ 
+# Memory
+used_memory:821848                       #Redis分配的内存总量             
+used_memory_human:802.59K
+used_memory_rss:85532672                 #Redis分配的内存总量(包括内存碎片)
+used_memory_peak:178987632
+used_memory_peak_human:170.70M           #Redis所用内存的高峰值
+used_memory_lua:33792
+mem_fragmentation_ratio:104.07           #内存碎片比率
+mem_allocator:tcmalloc-2.0
+ 
+# Persistence
+loading:0
+rdb_changes_since_last_save:0            #上次保存数据库之后，执行命令的次数
+rdb_bgsave_in_progress:0                 #后台进行中的 save 操作的数量
+rdb_last_save_time:1410848505            #最后一次成功保存的时间点，以 UNIX 时间戳格式显示
+rdb_last_bgsave_status:ok
+rdb_last_bgsave_time_sec:0
+rdb_current_bgsave_time_sec:-1
+aof_enabled:0                            #redis是否开启了aof
+aof_rewrite_in_progress:0
+aof_rewrite_scheduled:0
+aof_last_rewrite_time_sec:-1
+aof_current_rewrite_time_sec:-1
+aof_last_bgrewrite_status:ok
+aof_last_write_status:ok
+ 
+# Stats
+total_connections_received:5705          #运行以来连接过的客户端的总数量
+total_commands_processed:204013          # 运行以来执行过的命令的总数量
+instantaneous_ops_per_sec:0
+rejected_connections:0
+sync_full:0
+sync_partial_ok:0
+sync_partial_err:0
+expired_keys:34401                       #运行以来过期的 key 的数量
+evicted_keys:0                           #运行以来删除过的key的数量
+keyspace_hits:2129                       #命中key 的次数
+keyspace_misses:3148                     #没命中key 的次数
+pubsub_channels:0                        #当前使用中的频道数量
+pubsub_patterns:0                        #当前使用中的模式数量
+latest_fork_usec:4391
+ 
+# Replication
+role:master                              #当前实例的角色master还是slave
+connected_slaves:0
+master_repl_offset:0
+repl_backlog_active:0
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:0
+repl_backlog_histlen:0
+ 
+# CPU
+used_cpu_sys:1551.61
+used_cpu_user:1083.37
+used_cpu_sys_children:2.52
+used_cpu_user_children:16.79
+ 
+# Keyspace
+db0:keys=3,expires=0,avg_ttl=0             #各个数据库的 key 的数量，以及带有生存期的 key 的数量
