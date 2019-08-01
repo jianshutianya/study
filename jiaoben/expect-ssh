@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+
+    set timeout -1
+
+    spawn ssh -l zhou 10.10.10.10
+
+    expect {
+
+        "yes/no" { send "yes\r";exp_continue}
+
+        "password:" {send "zhou"}
+
+    }
+
+    expect eof

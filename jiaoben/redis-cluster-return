@@ -1,0 +1,8 @@
+#!/bin/bash
+file='/etc/redis/6379.conf'
+	/etc/init.d/redis_6379 stop
+	sed -i '815s/^/#/' "$file"
+	sed -i '823s/^/#/' "$file"
+	sed -i '829s/^/#/' "$file"
+	rm -rf /var/lib/redis/6397/*
+	/etc/init.d/redis_6379 start
